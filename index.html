@@ -102,6 +102,45 @@ details.card[open] summary{margin-bottom:6px}
 .row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
 .row>div{flex:1;min-width:140px}
 .danger{color:var(--felt);border-color:var(--felt)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;padding:3px;margin-top:16px;background:var(--surface)}
+.seg button{border:0;background:transparent;border-radius:7px;padding:7px 16px;font-weight:500;color:var(--muted)}
+.seg button[aria-selected="true"]{background:var(--ink);color:var(--bg)}
+.timer{text-align:center}
+.clock{font-family:Literata,Georgia,serif;font-size:3.2rem;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums;margin:4px 0}
+.timer .primary.big{font-size:1.05rem;padding:14px 26px;border-radius:12px}
+.timer .actions{justify-content:center}
+.recbtn{border:1px solid var(--felt);color:var(--felt);background:transparent;border-radius:999px;padding:9px 18px;font-weight:600;display:inline-flex;align-items:center;gap:8px}
+.recbtn.on{background:var(--felt);color:#fff}
+.recdot{width:10px;height:10px;border-radius:50%;background:currentColor}
+.recbtn.on .recdot{animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.25}}
+.clips{list-style:none;padding:0;margin:12px 0 0;text-align:left}
+.clips li{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:8px 0;border-top:1px solid var(--line);font-size:.92rem}
+.clips audio{width:100%;max-width:340px;height:36px}
+.clips a{color:var(--muted)}
+.sess{list-style:none;margin:0 0 6px;padding:0}
+.sess>li{padding:12px 0;border-bottom:1px solid var(--line)}
+.sess .top{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.sess .when{font-weight:600}
+.sess .note{color:var(--muted);font-size:.95rem;margin-top:2px}
+.sess .btns{display:flex;gap:6px;flex:none}
+.link{border:0;background:none;color:var(--muted);text-decoration:underline;padding:2px 4px;font-size:.9rem}
+.banner{padding:10px 12px;border-radius:10px;background:var(--felt-soft);margin-top:14px;display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-top:18px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.kpi .v{font-family:Literata,Georgia,serif;font-size:1.6rem;font-weight:700;line-height:1.15}
+.kpi .l{color:var(--muted);font-size:.85rem}
+.chartbox{overflow-x:auto}
+.chart{width:100%;min-width:420px;height:auto;display:block}
+.chart .b{fill:var(--felt)} .chart .b0{fill:var(--key)}
+.chart text{fill:var(--muted);font:11px "Instrument Sans",system-ui,sans-serif}
+.chart .v{fill:var(--ink);font-weight:600}
+.chart .goal{stroke:var(--ink);stroke-dasharray:4 4;opacity:.5}
+.scope{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.hbar{display:grid;grid-template-columns:minmax(80px,auto) 1fr auto;gap:8px 12px;align-items:center}
+.hbar .track{height:10px;background:var(--key);border-radius:5px;overflow:hidden}
+.hbar .track i{display:block;height:100%;background:var(--felt)}
+@media (prefers-reduced-motion:reduce){.recbtn.on .recdot{animation:none}}
 </style>
 </head>
 <body>
@@ -110,54 +149,114 @@ details.card[open] summary{margin-bottom:6px}
   <p class="lead">Un objectif : pratiquer chaque jour. Les jours difficiles, 5 minutes comptent aussi.</p>
 
   <div class="tabs" role="tablist" id="tabs" aria-label="Activités"></div>
-
-  <div class="hero" aria-live="polite">
-    <div class="felt"></div>
-    <div class="body">
-      <div><div class="big" id="streak">0</div><div class="small" id="streakLbl">jour d'affilée</div></div>
-      <div><div class="big" id="week">0</div><div class="small" id="weekLbl">minutes cette semaine</div></div>
-      <div class="bar"><i id="weekBar"></i></div>
-      <div class="warn" id="warn" hidden>Hier n'est pas coché. Fais au moins 5 minutes aujourd'hui pour ne pas rater deux jours d'affilée.</div>
-    </div>
+  <div class="seg" role="tablist" aria-label="Vue">
+    <button role="tab" id="vSess" aria-selected="true">Séances</button>
+    <button role="tab" id="vStats" aria-selected="false">Statistiques</button>
   </div>
 
-  <section class="card" aria-labelledby="formTitle">
-    <h2 id="formTitle">Noter une séance</h2>
-    <div class="daylabel" id="dayLabel"></div>
-    <div class="chips" id="chips">
-      <button class="chip" data-min="5">5 min</button>
-      <button class="chip" data-min="15">15 min</button>
-      <button class="chip" data-min="30">30 min</button>
-      <button class="chip" data-min="45">45 min</button>
-      <button class="chip" data-min="60">1 h</button>
-    </div>
-    <label for="minutes">Durée en minutes</label>
-    <input id="minutes" type="number" min="1" max="600" inputmode="numeric">
-    <label for="note">Ce que tu as travaillé (facultatif)</label>
-    <textarea id="note" placeholder="Ex. : mesures 9 à 12 mains séparées, 2 exercices de déchiffrage"></textarea>
-    <div class="actions">
-      <button class="primary" id="save">Enregistrer la séance</button>
-      <button class="ghost" id="del" hidden>Supprimer</button>
-      <span class="status" id="status"></span>
-    </div>
-  </section>
-
-  <section>
-    <div class="calhead">
-      <h2 id="monthTitle"></h2>
-      <div class="nav">
-        <button id="prev" aria-label="Mois précédent">‹</button>
-        <button id="next" aria-label="Mois suivant">›</button>
+  <div id="viewSess">
+    <div class="hero" aria-live="polite">
+      <div class="felt"></div>
+      <div class="body">
+        <div><div class="big" id="streak">0</div><div class="small" id="streakLbl">jour d'affilée</div></div>
+        <div><div class="big" id="week">0</div><div class="small" id="weekLbl">minutes cette semaine</div></div>
+        <div class="bar"><i id="weekBar"></i></div>
+        <div class="warn" id="warn" hidden>Hier n'est pas coché. Fais au moins 5 minutes aujourd'hui pour ne pas rater deux jours d'affilée.</div>
       </div>
     </div>
-    <div class="grid" id="grid"></div>
-    <p class="small" style="margin-top:8px">Touche un jour pour le modifier ou ajouter une séance oubliée.</p>
-  </section>
 
-  <section>
-    <h2>Dernières séances</h2>
-    <ul class="log" id="log"></ul>
-  </section>
+    <section class="card timer" aria-labelledby="timerTitle">
+      <h2 id="timerTitle">Séance en direct</h2>
+      <div id="idleBox">
+        <p class="small" style="margin:0 0 14px">Lance le chronomètre au début, arrête-le à la fin. Tu peux t'enregistrer autant de fois que tu veux pendant la séance.</p>
+        <button class="primary big" id="startBtn">Commencer la séance</button>
+      </div>
+      <div id="otherBox" class="hide">
+        <p style="margin:0 0 10px">Une séance de <b id="otherName"></b> est en cours.</p>
+        <button class="ghost" id="goOther">Y aller</button>
+      </div>
+      <div id="runBox" class="hide">
+        <div class="clock" id="clock" aria-live="off">0:00:00</div>
+        <div class="small" id="since"></div>
+        <div class="actions">
+          <button class="recbtn" id="recBtn"><span class="recdot"></span><span id="recLbl">Enregistrer le son</span></button>
+        </div>
+        <div class="small" id="recMsg" style="margin-top:6px"></div>
+        <ul class="clips" id="runClips"></ul>
+        <label for="runNote" style="text-align:left">Ce que tu travailles (facultatif)</label>
+        <textarea id="runNote" placeholder="Ex. : mesures 9 à 12 mains séparées"></textarea>
+        <div class="actions">
+          <button class="primary big" id="stopBtn">Terminer la séance</button>
+          <button class="ghost" id="cancelBtn">Annuler</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="dayTitle">
+      <h2 id="dayTitle">Journée</h2>
+      <div class="daylabel" id="dayLabel"></div>
+      <ul class="sess" id="daySess"></ul>
+      <h3 class="small" style="margin:14px 0 8px;font-size:.95rem;color:var(--ink)" id="formTitle">Ajouter une séance à la main</h3>
+      <div class="chips" id="chips">
+        <button class="chip" data-min="5">5 min</button>
+        <button class="chip" data-min="15">15 min</button>
+        <button class="chip" data-min="30">30 min</button>
+        <button class="chip" data-min="45">45 min</button>
+        <button class="chip" data-min="60">1 h</button>
+      </div>
+      <label for="minutes">Durée en minutes</label>
+      <input id="minutes" type="number" min="1" max="600" inputmode="numeric">
+      <label for="note">Note (facultatif)</label>
+      <textarea id="note" placeholder="Ex. : 2 exercices de déchiffrage"></textarea>
+      <div class="actions">
+        <button class="primary" id="save">Ajouter la séance</button>
+        <button class="ghost hide" id="cancelEdit">Annuler la modification</button>
+        <span class="status" id="status"></span>
+      </div>
+    </section>
+
+    <section>
+      <div class="calhead">
+        <h2 id="monthTitle"></h2>
+        <div class="nav">
+          <button id="prev" aria-label="Mois précédent">‹</button>
+          <button id="next" aria-label="Mois suivant">›</button>
+        </div>
+      </div>
+      <div class="grid" id="grid"></div>
+      <p class="small" style="margin-top:8px">Touche un jour pour voir ses séances ou en ajouter une oubliée.</p>
+    </section>
+
+    <section>
+      <h2>Dernières séances</h2>
+      <ul class="log" id="log"></ul>
+    </section>
+  </div>
+
+  <div id="viewStats" class="hide">
+    <div class="scope" role="group" aria-label="Périmètre">
+      <button class="chip" id="scopeCur" aria-pressed="true"></button>
+      <button class="chip" id="scopeAll" aria-pressed="false">Toutes les activités</button>
+    </div>
+    <div class="kpis" id="kpis"></div>
+    <section>
+      <h2>Minutes par jour, 14 derniers jours</h2>
+      <div class="chartbox" id="chartDays"></div>
+    </section>
+    <section>
+      <h2>Minutes par semaine, 12 dernières semaines</h2>
+      <div class="chartbox" id="chartWeeks"></div>
+    </section>
+    <section id="byActBox">
+      <h2>Par activité, 30 derniers jours</h2>
+      <div class="hbar" id="byAct"></div>
+    </section>
+    <section>
+      <h2>Moment de la journée</h2>
+      <p class="small" style="margin:-6px 0 10px">Séances chronométrées uniquement.</p>
+      <div class="hbar" id="byTime"></div>
+    </section>
+  </div>
 
   <section>
     <details class="card" id="actBox">
@@ -178,7 +277,7 @@ details.card[open] summary{margin-bottom:6px}
     <h2 id="syncTitle">Synchronisation GitHub</h2>
     <div class="sync"><span class="dot" id="dot"></span><span id="syncTxt">Non connecté : tes séances restent sur cet appareil.</span></div>
     <div id="connectBox">
-      <p class="small" style="margin:0">Colle un token GitHub ayant uniquement l'accès aux Gists. Tes séances seront stockées dans un gist secret <code>suivi-piano.json</code>, partagé entre tous tes appareils.</p>
+      <p class="small" style="margin:0">Colle un token GitHub ayant uniquement l'accès aux Gists. Tes séances seront stockées dans un gist secret <code>suivi-piano.json</code>, partagé entre tous tes appareils. Les enregistrements audio restent sur l'appareil où ils ont été faits.</p>
       <label for="token">Token GitHub</label>
       <input id="token" type="password" autocomplete="off" spellcheck="false" placeholder="ghp_… ou github_pat_…">
       <div class="actions"><button class="primary" id="connect">Connecter</button></div>
@@ -193,7 +292,7 @@ details.card[open] summary{margin-bottom:6px}
 
   <section>
     <h2>Sauvegarde</h2>
-    <p class="small" style="margin:0 0 10px">Une copie de secours en fichier, au cas où.</p>
+    <p class="small" style="margin:0 0 10px">Une copie de secours de tes séances en fichier. Les enregistrements audio se téléchargent un par un depuis chaque séance.</p>
     <div class="actions" style="margin-top:0">
       <button class="ghost" id="exp">Exporter mes données</button>
       <button class="ghost" id="imp">Importer une sauvegarde</button>
@@ -204,19 +303,25 @@ details.card[open] summary{margin-bottom:6px}
 
 <script>
 (function(){
-  const LS_DATA = "suivi-piano-v3";
-  const LS_OLD  = "suivi-piano-v1";
+  const LS_DATA = "suivi-piano-v4";
+  const LS_OLD3 = "suivi-piano-v3";
+  const LS_OLD1 = "suivi-piano-v1";
   const LS_CFG  = "suivi-piano-gist";
   const LS_CUR  = "suivi-piano-current";
+  const LS_RUN  = "suivi-piano-run";
   const API = "https://api.github.com";
   const FILE = "suivi-piano.json";
   const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-  // acts:    { id: {name, goal, t} | {deleted:true, t} }
-  // entries: { "id/YYYY-MM-DD": {min, note, t} | {deleted:true, t} }
+  // acts:    { id: {name, goal, t, created} | {deleted:true, t} }
+  // entries: { "act/YYYY-MM-DD/sid": {min, note, start?, end?, clips?:[{id,at,dur,mime}], t} | {deleted:true, t} }
   let data = {acts:{}, entries:{}};
   let cfg = {token:"", gistId:""};
   let cur = "";
+  let view = "sess";
+  let scopeAll = false;
+  let run = null;          // {act, start, note, clips:[]}
+  let editing = null;      // key of session being edited
   let selected = keyOf(new Date());
   let viewMonth = new Date(); viewMonth.setDate(1);
 
@@ -225,71 +330,99 @@ details.card[open] summary{margin-bottom:6px}
   const fmtShort = new Intl.DateTimeFormat("fr-FR",{weekday:"short",day:"numeric",month:"short"});
   const fmtMonth = new Intl.DateTimeFormat("fr-FR",{month:"long",year:"numeric"});
   const fmtTime = new Intl.DateTimeFormat("fr-FR",{hour:"2-digit",minute:"2-digit"});
+  const fmtDM = new Intl.DateTimeFormat("fr-FR",{day:"numeric",month:"numeric"});
 
   function keyOf(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
   function dateOf(k){ const [y,m,d]=k.split("-").map(Number); return new Date(y,m-1,d); }
   function addDays(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
   function todayKey(){ return keyOf(new Date()); }
+  function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+  function fmtDur(min){ min=Math.round(min); if(min<60) return min+" min"; const h=Math.floor(min/60), m=min%60; return h+" h"+(m?" "+String(m).padStart(2,"0"):""); }
+  function fmtClock(ms){ const s=Math.max(0,Math.floor(ms/1000)); return Math.floor(s/3600)+":"+String(Math.floor(s/60)%60).padStart(2,"0")+":"+String(s%60).padStart(2,"0"); }
+  function fmtSec(s){ s=Math.round(s); return Math.floor(s/60)+":"+String(s%60).padStart(2,"0"); }
+
   function liveActs(){ return Object.keys(data.acts).filter(id=>!data.acts[id].deleted).sort((a,b)=>(data.acts[a].created||0)-(data.acts[b].created||0) || a.localeCompare(b)); }
   function act(){ return data.acts[cur]; }
-  function live(day, id=cur){ const e = data.entries[id+"/"+day]; return e && !e.deleted ? e : null; }
   function newId(name){ return (name.toLowerCase().normalize("NFD").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,20)||"activite")+"-"+Math.random().toString(36).slice(2,6); }
+
+  // sessions helpers
+  function parseKey(k){ const p=k.split("/"); return {act:p[0], day:p[1], sid:p[2]}; }
+  function sessions(filterAct){ // array of {key, act, day, ...entry}
+    const out=[];
+    for(const k in data.entries){
+      const e=data.entries[k]; if(!e || e.deleted) continue;
+      const p=parseKey(k); if(!p.sid || (filterAct && p.act!==filterAct) || !data.acts[p.act] || data.acts[p.act].deleted) continue;
+      out.push(Object.assign({key:k, act:p.act, day:p.day}, e));
+    }
+    return out;
+  }
+  function daySessions(day, a=cur){ return sessions(a).filter(s=>s.day===day).sort((x,y)=>(x.start||x.t||0)-(y.start||y.t||0)); }
+  function dayTotals(a){ const m={}; sessions(a).forEach(s=>{ m[s.day]=(m[s.day]||0)+(s.min||0); }); return m; }
 
   // ---------- normalisation & migration ----------
   function normalize(obj){
     const out = {acts:{}, entries:{}};
     if(!obj || typeof obj!=="object") return out;
-    if(obj.acts && obj.entries){ // v3
+    if(obj.acts && obj.entries){
       for(const id in obj.acts){ const a=obj.acts[id]; if(a && typeof a==="object") out.acts[id]=a; }
-      for(const k in obj.entries){ const [id,day]=k.split("/"); if(id && DATE_RE.test(day||"") && obj.entries[k]) out.entries[k]=obj.entries[k]; }
+      for(const k in obj.entries){
+        const v=obj.entries[k]; if(!v || typeof v!=="object") continue;
+        const p=k.split("/");
+        if(p.length===3 && p[0] && DATE_RE.test(p[1]) && p[2]) out.entries[k]=v;
+        else if(p.length===2 && p[0] && DATE_RE.test(p[1])) out.entries[k+"/jour"]=v;   // v3 : une séance par jour
+      }
       return out;
     }
-    const old = obj.entries && typeof obj.entries==="object" ? obj.entries : obj; // v1/v2
-    let any = false;
-    for(const k in old){
-      if(!DATE_RE.test(k) || !old[k]) continue;
-      out.entries["piano/"+k] = Object.assign({t:0}, old[k]); any = true;
-    }
-    if(any) out.acts.piano = {name:"Piano", goal:210, t:0, created:0};
+    const old = obj.entries && typeof obj.entries==="object" ? obj.entries : obj;     // v1/v2
+    let any=false;
+    for(const k in old){ if(DATE_RE.test(k) && old[k]){ out.entries["piano/"+k+"/jour"]=Object.assign({t:0}, old[k]); any=true; } }
+    if(any) out.acts.piano={name:"Piano", goal:210, t:0, created:0};
     return out;
   }
-
   function loadLocal(){
-    try{
-      const raw = localStorage.getItem(LS_DATA);
-      if(raw) return normalize(JSON.parse(raw));
-      const old = localStorage.getItem(LS_OLD);
-      if(old) return normalize(JSON.parse(old));
-    }catch(e){}
+    for(const key of [LS_DATA, LS_OLD3, LS_OLD1]){
+      try{ const raw=localStorage.getItem(key); if(raw) return normalize(JSON.parse(raw)); }catch(e){}
+    }
     return {acts:{}, entries:{}};
   }
   function saveLocal(){ try{ localStorage.setItem(LS_DATA, JSON.stringify(data)); }catch(e){} }
   function loadCfg(){ try{ return Object.assign({token:"",gistId:""}, JSON.parse(localStorage.getItem(LS_CFG)||"{}")); }catch(e){ return {token:"",gistId:""}; } }
   function saveCfg(){ try{ localStorage.setItem(LS_CFG, JSON.stringify(cfg)); }catch(e){} }
   function saveCur(){ try{ localStorage.setItem(LS_CUR, cur); }catch(e){} }
+  function loadRun(){ try{ const r=JSON.parse(localStorage.getItem(LS_RUN)||"null"); return r && r.start && r.act ? r : null; }catch(e){ return null; } }
+  function saveRun(){ try{ if(run) localStorage.setItem(LS_RUN, JSON.stringify(run)); else localStorage.removeItem(LS_RUN); }catch(e){} }
 
   function ensureActivity(){
-    const ids = liveActs();
-    if(!ids.length){
-      data.acts.piano = {name:"Piano", goal:210, t:0, created:0};
-      saveLocal();
-    }
-    let saved = ""; try{ saved = localStorage.getItem(LS_CUR)||""; }catch(e){}
-    const list = liveActs();
+    if(!liveActs().length){ data.acts.piano={name:"Piano", goal:210, t:0, created:0}; saveLocal(); }
+    let saved=""; try{ saved=localStorage.getItem(LS_CUR)||""; }catch(e){}
+    const list=liveActs();
     cur = list.includes(cur) ? cur : (list.includes(saved) ? saved : list[0]);
   }
 
   // ---------- merge ----------
-  function mergeMap(a,b){
-    const out = Object.assign({}, a);
-    for(const k in b){ if(b[k] && (!out[k] || (b[k].t||0) > (out[k].t||0))) out[k] = b[k]; }
-    return out;
-  }
+  function mergeMap(a,b){ const out=Object.assign({},a); for(const k in b){ if(b[k] && (!out[k] || (b[k].t||0)>(out[k].t||0))) out[k]=b[k]; } return out; }
   function merge(a,b){ return {acts:mergeMap(a.acts,b.acts), entries:mergeMap(a.entries,b.entries)}; }
   function sortObj(o){ const r={}; Object.keys(o).sort().forEach(k=>r[k]=o[k]); return r; }
   function canon(d){ return JSON.stringify({acts:sortObj(d.acts), entries:sortObj(d.entries)}); }
-  function payload(){ return JSON.stringify({app:"suivi-piano", version:3, acts:sortObj(data.acts), entries:sortObj(data.entries)}, null, 1); }
+  function payload(){ return JSON.stringify({app:"suivi-piano", version:4, acts:sortObj(data.acts), entries:sortObj(data.entries)}, null, 1); }
 
+  // ---------- audio (IndexedDB, local à l'appareil) ----------
+  let dbp=null;
+  function idb(){
+    if(dbp) return dbp;
+    dbp = new Promise((res,rej)=>{
+      if(!window.indexedDB) return rej(new Error("no idb"));
+      const r=indexedDB.open("suivi-audio",1);
+      r.onupgradeneeded=()=>r.result.createObjectStore("clips");
+      r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error);
+    });
+    return dbp;
+  }
+  async function idbOp(mode, fn){ const db=await idb(); return new Promise((res,rej)=>{ const tx=db.transaction("clips",mode); const st=tx.objectStore("clips"); const r=fn(st); tx.oncomplete=()=>res(r && r.result); tx.onerror=()=>rej(tx.error); }); }
+  const idbPut=(id,blob)=>idbOp("readwrite", st=>st.put(blob,id));
+  const idbGet=id=>idbOp("readonly", st=>st.get(id));
+  const idbDel=id=>idbOp("readwrite", st=>st.delete(id)).catch(()=>{});
+  function extOf(mime){ return /mp4|aac|m4a/.test(mime||"") ? "m4a" : /ogg/.test(mime||"") ? "ogg" : /wav/.test(mime||"") ? "wav" : "webm"; }
   // ---------- GitHub Gist ----------
   async function gh(path, opts={}){
     const headers = {"Accept":"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28","Authorization":"Bearer "+cfg.token};
@@ -354,130 +487,359 @@ details.card[open] summary{margin-bottom:6px}
     if(!on) setSync("", "Non connecté : tes séances restent sur cet appareil.");
   }
 
-  // ---------- stats ----------
-  function streak(){
-    let d = new Date(); if(!live(keyOf(d))) d = addDays(d,-1);
-    let n = 0; while(live(keyOf(d))){ n++; d = addDays(d,-1); } return n;
-  }
-  function weekMinutes(){
-    const now = new Date(), dow = (now.getDay()+6)%7, start = addDays(now,-dow);
-    let total = 0; for(let i=0;i<=dow;i++){ const e = live(keyOf(addDays(start,i))); if(e) total += e.min||0; } return total;
-  }
-  function daysOf(id=cur){ const p = id+"/"; return Object.keys(data.entries).filter(k=>k.startsWith(p) && !data.entries[k].deleted).map(k=>k.slice(p.length)); }
 
-  // ---------- render ----------
-  function renderAll(){ renderTabs(); render(); renderActBox(); }
+  // ---------- enregistrement ----------
+  let rec=null; // {mr, stream, chunks, startedAt, mime, timer}
+  function pickMime(){
+    if(!window.MediaRecorder || !MediaRecorder.isTypeSupported) return "";
+    for(const m of ["audio/mp4","audio/webm;codecs=opus","audio/webm","audio/ogg;codecs=opus"]) if(MediaRecorder.isTypeSupported(m)) return m;
+    return "";
+  }
+  async function startRec(){
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder){ $("recMsg").textContent="L'enregistrement audio n'est pas disponible dans ce navigateur."; return; }
+    let stream;
+    try{ stream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false, noiseSuppression:false, autoGainControl:false}}); }
+    catch(e){ $("recMsg").textContent = e && e.name==="NotAllowedError" ? "Accès au micro refusé. Autorise le micro pour ce site dans les réglages du navigateur." : "Impossible d'accéder au micro."; return; }
+    const mime=pickMime();
+    let mr; try{ mr = mime ? new MediaRecorder(stream,{mimeType:mime}) : new MediaRecorder(stream); }catch(e){ stream.getTracks().forEach(t=>t.stop()); $("recMsg").textContent="Impossible de démarrer l'enregistrement."; return; }
+    const state={mr, stream, chunks:[], startedAt:Date.now(), mime:mr.mimeType||mime};
+    rec=state;
+    mr.ondataavailable=e=>{ if(e.data && e.data.size) state.chunks.push(e.data); };
+    mr.start(1000);
+    $("recMsg").textContent="";
+    rec.timer=setInterval(renderRecBtn, 500);
+    renderRecBtn();
+  }
+  function stopRec(){
+    return new Promise(resolve=>{
+      if(!rec) return resolve();
+      const r=rec;
+      r.mr.onstop=async ()=>{
+        clearInterval(r.timer);
+        r.stream.getTracks().forEach(t=>t.stop());
+        const blob=new Blob(r.chunks,{type:r.mime||"audio/webm"});
+        rec=null;
+        if(blob.size && run){
+          const clip={id:"c"+uid(), at:r.startedAt, dur:Math.round((Date.now()-r.startedAt)/1000), mime:blob.type};
+          try{ await idbPut(clip.id, blob); run.clips.push(clip); saveRun(); }
+          catch(e){ $("recMsg").textContent="L'enregistrement n'a pas pu être sauvegardé sur cet appareil."; }
+        }
+        renderRecBtn(); renderRunClips(); resolve();
+      };
+      try{ r.mr.stop(); }catch(e){ r.mr.onstop(); }
+    });
+  }
+  function renderRecBtn(){
+    const on=!!rec;
+    $("recBtn").classList.toggle("on", on);
+    $("recLbl").textContent = on ? "Arrêter l'enregistrement · "+fmtSec((Date.now()-rec.startedAt)/1000) : "Enregistrer le son";
+  }
+
+  // ---------- séance en direct ----------
+  let tick=null, wake=null;
+  async function keepAwake(){ try{ if(run && navigator.wakeLock && document.visibilityState==="visible") wake = await navigator.wakeLock.request("screen"); }catch(e){} }
+  function releaseWake(){ try{ wake && wake.release(); }catch(e){} wake=null; }
+  function startSession(){
+    if(run) return;
+    run={act:cur, start:Date.now(), note:"", clips:[]};
+    saveRun(); keepAwake(); renderTimer();
+  }
+  async function stopSession(){
+    if(!run) return;
+    await stopRec();
+    const end=Date.now(), start=run.start;
+    const min=Math.max(1, Math.round((end-start)/60000));
+    const day=keyOf(new Date(start));
+    const key=run.act+"/"+day+"/"+uid();
+    data.entries[key]={min:Math.min(min,600), note:$("runNote").value.trim().slice(0,500), start, end, clips:run.clips, t:Date.now()};
+    const a=run.act; run=null; saveRun(); releaseWake();
+    if(cur!==a){ cur=a; saveCur(); }
+    selected=day; changed(); renderAll();
+    flash("Séance enregistrée : "+fmtDur(min)+".");
+  }
+  async function cancelSession(){
+    if(!run) return;
+    const n=run.clips.length;
+    if(!confirm("Annuler la séance en cours ?"+(n?" Ses "+n+" enregistrement(s) seront supprimés.":""))) return;
+    await stopRec();
+    run.clips.forEach(c=>idbDel(c.id));
+    run=null; saveRun(); releaseWake(); renderTimer();
+  }
+  function renderTimer(){
+    const running=!!run, mine=running && run.act===cur;
+    $("idleBox").classList.toggle("hide", running);
+    $("otherBox").classList.toggle("hide", !running || mine);
+    $("runBox").classList.toggle("hide", !mine);
+    clearInterval(tick); tick=null;
+    if(running && !mine){ $("otherName").textContent = data.acts[run.act] ? data.acts[run.act].name : "une autre activité"; }
+    if(mine){
+      $("since").textContent="Commencée à "+fmtTime.format(new Date(run.start));
+      if(document.activeElement!==$("runNote")) $("runNote").value=run.note||"";
+      const upd=()=>{ $("clock").textContent=fmtClock(Date.now()-run.start); };
+      upd(); tick=setInterval(upd,1000);
+      renderRecBtn(); renderRunClips();
+    }
+  }
+  function renderRunClips(){
+    const ul=$("runClips"); ul.textContent="";
+    if(!run) return;
+    run.clips.forEach((c,i)=>ul.appendChild(clipItem(c, "Enregistrement "+(i+1)+" · "+fmtSec(c.dur))));
+  }
+  const urls=[];
+  function clipItem(c, label){
+    const li=document.createElement("li");
+    const span=document.createElement("span"); span.textContent=label; li.appendChild(span);
+    idbGet(c.id).then(blob=>{
+      if(!blob){ const s=document.createElement("span"); s.className="small"; s.textContent="(sur un autre appareil)"; li.appendChild(s); return; }
+      const u=URL.createObjectURL(blob); urls.push(u);
+      const au=document.createElement("audio"); au.controls=true; au.preload="metadata"; au.src=u;
+      const a=document.createElement("a"); a.href=u; a.download="enregistrement-"+keyOf(new Date(c.at))+"-"+fmtTime.format(new Date(c.at)).replace(":","h")+"."+extOf(c.mime); a.textContent="Télécharger";
+      li.append(au,a);
+    }).catch(()=>{ const s=document.createElement("span"); s.className="small"; s.textContent="(indisponible)"; li.appendChild(s); });
+    return li;
+  }
+  function freeUrls(){ while(urls.length) URL.revokeObjectURL(urls.pop()); }
+
+  // ---------- stats ----------
+  function streakFrom(tot){
+    let d=new Date(); if(!tot[keyOf(d)]) d=addDays(d,-1);
+    let n=0; while(tot[keyOf(d)]){ n++; d=addDays(d,-1); } return n;
+  }
+  function bestStreak(tot){
+    const days=Object.keys(tot).filter(k=>tot[k]>0).sort(); let best=0, run=0, prev=null;
+    days.forEach(k=>{ const d=dateOf(k); run = prev && keyOf(addDays(prev,1))===k ? run+1 : 1; best=Math.max(best,run); prev=d; });
+    return best;
+  }
+  function weekStart(d){ const x=new Date(d.getFullYear(),d.getMonth(),d.getDate()); return addDays(x, -((x.getDay()+6)%7)); }
+  function sumRange(tot, start, n){ let s=0; for(let i=0;i<n;i++) s+=tot[keyOf(addDays(start,i))]||0; return s; }
+  function weekMinutes(tot){ const now=new Date(); return sumRange(tot, weekStart(now), ((now.getDay()+6)%7)+1); }
+
+  // ---------- rendu ----------
+  function renderAll(){ freeUrls(); renderTabs(); renderView(); renderActBox(); }
   function renderTabs(){
-    const box = $("tabs"); box.textContent = "";
+    const box=$("tabs"); box.textContent="";
     liveActs().forEach(id=>{
-      const b = document.createElement("button");
-      b.className = "tab"; b.setAttribute("role","tab"); b.setAttribute("aria-selected", String(id===cur));
-      b.textContent = data.acts[id].name;
-      b.addEventListener("click", ()=>{ cur = id; saveCur(); renderAll(); });
+      const b=document.createElement("button");
+      b.className="tab"; b.setAttribute("role","tab"); b.setAttribute("aria-selected", String(id===cur));
+      b.textContent=data.acts[id].name + (run && run.act===id ? " ●" : "");
+      b.addEventListener("click", ()=>{ cur=id; editing=null; saveCur(); renderAll(); });
       box.appendChild(b);
     });
-    const add = document.createElement("button");
-    add.className = "tab add"; add.textContent = "+ Ajouter une activité";
-    add.addEventListener("click", addActivity);
-    box.appendChild(add);
+    const add=document.createElement("button"); add.className="tab add"; add.textContent="+ Ajouter une activité";
+    add.addEventListener("click", addActivity); box.appendChild(add);
   }
-  function render(){
-    const a = act();
-    $("title").textContent = "Suivi " + a.name.toLowerCase();
-    document.title = "Suivi " + a.name.toLowerCase();
-    const s = streak();
-    $("streak").textContent = s;
-    $("streakLbl").textContent = s>1 ? "jours d'affilée" : "jour d'affilée";
-    const w = weekMinutes(), goal = a.goal||210;
-    $("week").textContent = w;
-    $("weekLbl").textContent = "minutes cette semaine, objectif "+goal;
-    $("weekBar").style.width = Math.min(100, w/goal*100)+"%";
-    $("warn").hidden = !!live(todayKey()) || !!live(keyOf(addDays(new Date(),-1))) || !daysOf().length;
-    renderForm(); renderCal(); renderLog();
+  function renderView(){
+    const a=act();
+    $("title").textContent="Suivi "+a.name.toLowerCase(); document.title="Suivi "+a.name.toLowerCase();
+    $("vSess").setAttribute("aria-selected", String(view==="sess"));
+    $("vStats").setAttribute("aria-selected", String(view==="stats"));
+    $("viewSess").classList.toggle("hide", view!=="sess");
+    $("viewStats").classList.toggle("hide", view!=="stats");
+    if(view==="sess") renderSess(); else renderStats();
+  }
+  function renderSess(){
+    const a=act(), tot=dayTotals(cur);
+    const s=streakFrom(tot);
+    $("streak").textContent=s; $("streakLbl").textContent = s>1 ? "jours d'affilée" : "jour d'affilée";
+    const w=weekMinutes(tot), goal=a.goal||210;
+    $("week").textContent=w; $("weekLbl").textContent="minutes cette semaine, objectif "+goal;
+    $("weekBar").style.width=Math.min(100, w/goal*100)+"%";
+    $("warn").hidden = !!tot[todayKey()] || !!tot[keyOf(addDays(new Date(),-1))] || !Object.keys(tot).length;
+    renderTimer(); renderDay(); renderCal(tot); renderLog();
+  }
+  function sessLabel(s){
+    if(s.start && s.end) return fmtTime.format(new Date(s.start))+" – "+fmtTime.format(new Date(s.end))+" · "+fmtDur(s.min);
+    return "Ajoutée à la main · "+fmtDur(s.min);
+  }
+  function renderDay(){
+    $("dayLabel").textContent=(selected===todayKey() ? "Aujourd'hui, " : "")+fmtLong.format(dateOf(selected));
+    const ul=$("daySess"); ul.textContent="";
+    const list=daySessions(selected);
+    if(!list.length){ const li=document.createElement("li"); li.className="emptymsg"; li.textContent="Aucune séance ce jour-là."; ul.appendChild(li); }
+    list.forEach(s=>{
+      const li=document.createElement("li");
+      const top=document.createElement("div"); top.className="top";
+      const w=document.createElement("span"); w.className="when"; w.textContent=sessLabel(s);
+      const btns=document.createElement("span"); btns.className="btns";
+      const ed=document.createElement("button"); ed.className="link"; ed.textContent="Modifier";
+      ed.addEventListener("click", ()=>{ editing=s.key; $("minutes").value=s.min; $("note").value=s.note||""; renderForm(); $("formTitle").scrollIntoView({block:"center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"}); });
+      const del=document.createElement("button"); del.className="link"; del.textContent="Supprimer";
+      del.addEventListener("click", ()=>{
+        const n=(s.clips||[]).length;
+        if(!confirm("Supprimer cette séance ?"+(n?" Ses "+n+" enregistrement(s) seront supprimés de cet appareil.":""))) return;
+        (s.clips||[]).forEach(c=>idbDel(c.id));
+        data.entries[s.key]={deleted:true, t:Date.now()}; if(editing===s.key) editing=null;
+        changed(); renderAll(); flash("Séance supprimée.");
+      });
+      btns.append(ed,del); top.append(w,btns); li.appendChild(top);
+      if(s.note){ const n=document.createElement("div"); n.className="note"; n.textContent=s.note; li.appendChild(n); }
+      if(s.clips && s.clips.length){
+        const cl=document.createElement("ul"); cl.className="clips";
+        s.clips.forEach((c,i)=>cl.appendChild(clipItem(c, "Enregistrement "+(i+1)+" · "+fmtSec(c.dur))));
+        li.appendChild(cl);
+      }
+      ul.appendChild(li);
+    });
+    renderForm();
   }
   function renderForm(){
-    const d = dateOf(selected), e = live(selected);
-    $("dayLabel").textContent = (selected===todayKey() ? "Aujourd'hui, " : "") + fmtLong.format(d);
-    $("minutes").value = e ? e.min : "";
-    $("note").value = e ? (e.note||"") : "";
-    $("del").hidden = !e;
-    $("save").textContent = e ? "Mettre à jour la séance" : "Enregistrer la séance";
-    $("note").placeholder = cur==="piano" ? "Ex. : mesures 9 à 12 mains séparées, 2 exercices de déchiffrage" : "Ex. : ce que tu as travaillé aujourd'hui";
+    const ed=editing && data.entries[editing] && !data.entries[editing].deleted;
+    if(!ed) editing=null;
+    $("formTitle").textContent = editing ? "Modifier la séance" : "Ajouter une séance à la main";
+    $("save").textContent = editing ? "Mettre à jour" : "Ajouter la séance";
+    $("cancelEdit").classList.toggle("hide", !editing);
     syncChips();
   }
-  function syncChips(){ const v = Number($("minutes").value); document.querySelectorAll(".chip").forEach(c=>c.setAttribute("aria-pressed", String(Number(c.dataset.min)===v))); }
-  function renderCal(){
-    $("monthTitle").textContent = fmtMonth.format(viewMonth);
-    const g = $("grid"); g.textContent = "";
+  function syncChips(){ const v=Number($("minutes").value); document.querySelectorAll("#chips .chip").forEach(c=>c.setAttribute("aria-pressed", String(Number(c.dataset.min)===v))); }
+  function renderCal(tot){
+    $("monthTitle").textContent=fmtMonth.format(viewMonth);
+    const g=$("grid"); g.textContent="";
     ["lun","mar","mer","jeu","ven","sam","dim"].forEach(n=>{ const x=document.createElement("div"); x.className="dow"; x.textContent=n; g.appendChild(x); });
-    const first = new Date(viewMonth.getFullYear(), viewMonth.getMonth(), 1);
+    const first=new Date(viewMonth.getFullYear(), viewMonth.getMonth(), 1);
     for(let i=0;i<(first.getDay()+6)%7;i++){ const x=document.createElement("div"); x.className="day empty"; g.appendChild(x); }
-    const days = new Date(viewMonth.getFullYear(), viewMonth.getMonth()+1, 0).getDate(), tk = todayKey();
+    const days=new Date(viewMonth.getFullYear(), viewMonth.getMonth()+1, 0).getDate(), tk=todayKey();
     for(let i=1;i<=days;i++){
-      const d = new Date(viewMonth.getFullYear(), viewMonth.getMonth(), i), k = keyOf(d), e = live(k);
-      const b = document.createElement("button");
-      b.className = "day"+(e?" played":"")+(k===tk?" today":"")+(k===selected?" sel":"")+(k>tk?" future":"");
-      const num = document.createElement("span"); num.textContent = i;
-      const m = document.createElement("span"); m.className="m"; m.textContent = e ? e.min+"′" : "";
-      b.append(num,m);
-      b.setAttribute("aria-label", fmtLong.format(d)+(e ? ", "+e.min+" minutes" : ", pas de séance"));
-      if(k>tk) b.disabled = true;
-      else b.addEventListener("click", ()=>{ selected = k; render(); $("formTitle").scrollIntoView({behavior: matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth", block:"start"}); });
+      const d=new Date(viewMonth.getFullYear(), viewMonth.getMonth(), i), k=keyOf(d), m=tot[k]||0;
+      const b=document.createElement("button");
+      b.className="day"+(m?" played":"")+(k===tk?" today":"")+(k===selected?" sel":"")+(k>tk?" future":"");
+      const num=document.createElement("span"); num.textContent=i;
+      const ms=document.createElement("span"); ms.className="m"; ms.textContent = m ? m+"′" : "";
+      b.append(num,ms);
+      b.setAttribute("aria-label", fmtLong.format(d)+(m ? ", "+m+" minutes" : ", pas de séance"));
+      if(k>tk) b.disabled=true;
+      else b.addEventListener("click", ()=>{ selected=k; editing=null; $("minutes").value=""; $("note").value=""; freeUrls(); renderSess(); $("dayTitle").scrollIntoView({behavior: matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth", block:"start"}); });
       g.appendChild(b);
     }
   }
   function renderLog(){
-    const ul = $("log"); ul.textContent = "";
-    const days = daysOf().sort().reverse().slice(0,10);
-    if(!days.length){ const li = document.createElement("li"); li.className="emptymsg"; li.textContent = "Aucune séance pour l'instant. Note ta première séance ci-dessus."; ul.appendChild(li); return; }
-    days.forEach(k=>{
-      const e = live(k), li = document.createElement("li");
-      const d = document.createElement("span"); d.className="d"; d.textContent = fmtShort.format(dateOf(k));
-      const t = document.createElement("span"); t.className="t";
-      const b = document.createElement("b"); b.textContent = e.min+" min"; t.appendChild(b);
-      if(e.note) t.appendChild(document.createTextNode(" · "+e.note));
+    const ul=$("log"); ul.textContent="";
+    const list=sessions(cur).sort((x,y)=> y.day.localeCompare(x.day) || (y.start||y.t||0)-(x.start||x.t||0)).slice(0,10);
+    if(!list.length){ const li=document.createElement("li"); li.className="emptymsg"; li.textContent="Aucune séance pour l'instant. Lance le chronomètre ou ajoute une séance à la main."; ul.appendChild(li); return; }
+    list.forEach(s=>{
+      const li=document.createElement("li");
+      const d=document.createElement("span"); d.className="d"; d.textContent=fmtShort.format(dateOf(s.day));
+      const t=document.createElement("span"); t.className="t";
+      const b=document.createElement("b"); b.textContent=fmtDur(s.min); t.appendChild(b);
+      const extra=[]; if(s.start) extra.push(fmtTime.format(new Date(s.start))); if(s.clips && s.clips.length) extra.push(s.clips.length+" enreg."); if(s.note) extra.push(s.note);
+      if(extra.length) t.appendChild(document.createTextNode(" · "+extra.join(" · ")));
       li.append(d,t); ul.appendChild(li);
     });
   }
+
+  // ---------- statistiques ----------
+  function svgEl(tag, attrs, text){ const e=document.createElementNS("http://www.w3.org/2000/svg", tag); for(const k in attrs) e.setAttribute(k, attrs[k]); if(text!==undefined) e.textContent=text; return e; }
+  function barChart(box, values, labels, goal, titles){
+    box.textContent="";
+    const W=640, H=210, top=22, bottom=26, left=6, right=6, n=values.length;
+    const max=Math.max(goal||0, ...values, 10);
+    const svg=svgEl("svg",{viewBox:"0 0 "+W+" "+H, class:"chart", role:"img"});
+    const bw=(W-left-right)/n, ih=H-top-bottom;
+    values.forEach((v,i)=>{
+      const h=v? Math.max(3, v/max*ih) : 3, x=left+i*bw+bw*0.15, y=top+ih-h;
+      const r=svgEl("rect",{x, y, width:bw*0.7, height:h, rx:3, class: v?"b":"b0"});
+      r.appendChild(svgEl("title",{}, titles[i])); svg.appendChild(r);
+      if(v) svg.appendChild(svgEl("text",{x:x+bw*0.35, y:y-5, "text-anchor":"middle", class:"v"}, String(v)));
+      svg.appendChild(svgEl("text",{x:x+bw*0.35, y:H-8, "text-anchor":"middle"}, labels[i]));
+    });
+    if(goal){ const gy=top+ih-goal/max*ih; svg.appendChild(svgEl("line",{x1:left, x2:W-right, y1:gy, y2:gy, class:"goal"})); svg.appendChild(svgEl("text",{x:W-right, y:gy-4, "text-anchor":"end"}, "objectif "+goal)); }
+    const desc=values.map((v,i)=>titles[i]).join(", ");
+    svg.setAttribute("aria-label", desc);
+    box.appendChild(svg);
+  }
+  function hbars(box, rows){
+    box.textContent="";
+    const max=Math.max(1,...rows.map(r=>r.v));
+    if(!rows.some(r=>r.v)){ const p=document.createElement("p"); p.className="emptymsg"; p.style.gridColumn="1/-1"; p.textContent="Pas encore de données."; box.appendChild(p); return; }
+    rows.forEach(r=>{
+      const l=document.createElement("span"); l.textContent=r.label;
+      const tr=document.createElement("span"); tr.className="track"; const i=document.createElement("i"); i.style.width=(r.v/max*100)+"%"; tr.appendChild(i);
+      const v=document.createElement("span"); v.className="small"; v.textContent=r.text;
+      box.append(l,tr,v);
+    });
+  }
+  function renderStats(){
+    $("scopeCur").textContent=act().name;
+    $("scopeCur").setAttribute("aria-pressed", String(!scopeAll));
+    $("scopeAll").setAttribute("aria-pressed", String(scopeAll));
+    const filt = scopeAll ? null : cur;
+    const list=sessions(filt), tot=dayTotals(filt);
+    const goalW = scopeAll ? liveActs().reduce((s,id)=>s+(data.acts[id].goal||210),0) : (act().goal||210);
+    const total=list.reduce((s,x)=>s+(x.min||0),0);
+    const nDays=Object.keys(tot).filter(k=>tot[k]>0).length;
+    const today=new Date(), ws=weekStart(today);
+    const thisW=sumRange(tot, ws, 7), lastW=sumRange(tot, addDays(ws,-7), 7);
+    const last30=sumRange(tot, addDays(today,-29), 30);
+    let days30=0; for(let i=0;i<30;i++) if(tot[keyOf(addDays(today,-i))]) days30++;
+    const kpis=[
+      [fmtDur(total), "temps total"],
+      [String(list.length), list.length>1?"séances":"séance"],
+      [list.length?fmtDur(total/list.length):"–", "durée moyenne d'une séance"],
+      [nDays?fmtDur(total/nDays):"–", "moyenne par jour pratiqué"],
+      [fmtDur(thisW), "cette semaine"+(lastW?" ("+(thisW>=lastW?"+":"−")+fmtDur(Math.abs(thisW-lastW))+")":"")],
+      [fmtDur(lastW), "semaine dernière"],
+      [fmtDur(last30), "30 derniers jours"],
+      [days30+" / 30", "jours pratiqués sur 30 jours"],
+      [String(streakFrom(tot)), "jours d'affilée"],
+      [String(bestStreak(tot)), "meilleure série"]
+    ];
+    const kb=$("kpis"); kb.textContent="";
+    kpis.forEach(([v,l])=>{ const d=document.createElement("div"); d.className="kpi"; const a=document.createElement("div"); a.className="v"; a.textContent=v; const b=document.createElement("div"); b.className="l"; b.textContent=l; d.append(a,b); kb.appendChild(d); });
+
+    const dv=[], dl=[], dt=[];
+    for(let i=13;i>=0;i--){ const d=addDays(today,-i), k=keyOf(d), v=tot[k]||0; dv.push(v); dl.push(i===0?"auj.":fmtDM.format(d)); dt.push(fmtShort.format(d)+" : "+v+" min"); }
+    barChart($("chartDays"), dv, dl, Math.round(goalW/7), dt);
+    const wv=[], wl=[], wt=[];
+    for(let i=11;i>=0;i--){ const s=addDays(ws,-7*i), v=sumRange(tot,s,7); wv.push(v); wl.push(fmtDM.format(s)); wt.push("semaine du "+fmtShort.format(s)+" : "+v+" min"); }
+    barChart($("chartWeeks"), wv, wl, goalW, wt);
+
+    $("byActBox").classList.toggle("hide", !scopeAll || liveActs().length<2);
+    if(scopeAll){
+      hbars($("byAct"), liveActs().map(id=>{ const t=dayTotals(id); const v=sumRange(t, addDays(today,-29), 30); return {label:data.acts[id].name, v, text:fmtDur(v)}; }));
+    }
+    const buckets=[["Matin (5h–12h)",5,12],["Après-midi (12h–18h)",12,18],["Soir (18h–23h)",18,23],["Nuit (23h–5h)",23,29]];
+    hbars($("byTime"), buckets.map(([label,a,b])=>{
+      const ss=list.filter(s=>s.start).filter(s=>{ let h=new Date(s.start).getHours(); if(h<5) h+=24; return h>=a && h<b; });
+      const v=ss.reduce((x,s)=>x+s.min,0);
+      return {label, v, text: ss.length ? ss.length+" · "+fmtDur(v) : "–"};
+    }));
+  }
   function renderActBox(){
-    const a = act();
-    $("actSummary").textContent = "Réglages : "+a.name;
-    $("actName").value = a.name;
-    $("actGoal").value = a.goal||210;
-    $("actDel").disabled = liveActs().length<=1;
-    $("actDel").title = liveActs().length<=1 ? "Il faut garder au moins une activité." : "";
+    const a=act();
+    $("actSummary").textContent="Réglages : "+a.name;
+    $("actName").value=a.name; $("actGoal").value=a.goal||210;
+    $("actDel").disabled=liveActs().length<=1;
+    $("actDel").title=liveActs().length<=1 ? "Il faut garder au moins une activité." : "";
   }
   let flashT;
-  function flash(msg, warn, el="status"){ const s = $(el); s.textContent = msg; s.style.color = warn ? "var(--felt)" : "var(--ok)"; clearTimeout(flashT); flashT = setTimeout(()=>{ s.textContent=""; }, 3000); }
+  function flash(msg, warn, el="status"){ const s=$(el); s.textContent=msg; s.style.color=warn?"var(--felt)":"var(--ok)"; clearTimeout(flashT); flashT=setTimeout(()=>{ s.textContent=""; }, 3500); }
 
   // ---------- activités ----------
   function addActivity(){
-    const name = (prompt("Nom de la nouvelle activité (ex. : Guitare)")||"").trim().slice(0,40);
+    const name=(prompt("Nom de la nouvelle activité (ex. : Guitare)")||"").trim().slice(0,40);
     if(!name) return;
-    const existing = liveActs().find(id=>data.acts[id].name.toLowerCase()===name.toLowerCase());
-    if(existing){ cur = existing; saveCur(); renderAll(); return; }
-    const id = newId(name);
-    data.acts[id] = {name, goal:210, t:Date.now(), created:Date.now()};
-    cur = id; saveCur(); changed(); renderAll();
-    $("actBox").open = true;
+    const ex=liveActs().find(id=>data.acts[id].name.toLowerCase()===name.toLowerCase());
+    if(ex){ cur=ex; saveCur(); renderAll(); return; }
+    const id=newId(name);
+    data.acts[id]={name, goal:210, t:Date.now(), created:Date.now()};
+    cur=id; saveCur(); changed(); renderAll(); $("actBox").open=true;
   }
 
   // ---------- sauvegarde ----------
   function exportData(){
-    const blob = new Blob([payload()],{type:"application/json"});
-    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "suivi-"+todayKey()+".json";
-    document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+    const blob=new Blob([payload()],{type:"application/json"});
+    const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="suivi-"+todayKey()+".json";
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
   }
   function importData(file){
-    const r = new FileReader();
-    r.onload = ()=>{
+    const r=new FileReader();
+    r.onload=()=>{
       try{
-        const inc = normalize(JSON.parse(r.result)), now = Date.now();
-        const n = Object.keys(inc.entries).filter(k=>!inc.entries[k].deleted).length;
+        const inc=normalize(JSON.parse(r.result)), now=Date.now();
+        const n=Object.keys(inc.entries).filter(k=>!inc.entries[k].deleted).length;
         if(!n && !Object.keys(inc.acts).length) throw 0;
-        for(const k in inc.entries) inc.entries[k] = Object.assign({}, inc.entries[k], {t:now});
-        for(const k in inc.acts) inc.acts[k] = Object.assign({}, inc.acts[k], {t:now});
-        data = merge(data, inc); ensureActivity(); changed(); renderAll();
+        for(const k in inc.entries) inc.entries[k]=Object.assign({}, inc.entries[k], {t:now});
+        for(const k in inc.acts) inc.acts[k]=Object.assign({}, inc.acts[k], {t:now});
+        data=merge(data,inc); ensureActivity(); changed(); renderAll();
         flash(n+" séance(s) importée(s).");
       }catch(e){ flash("Ce fichier n'est pas une sauvegarde du suivi.", true); }
     };
@@ -485,56 +847,75 @@ details.card[open] summary{margin-bottom:6px}
   }
 
   // ---------- événements ----------
-  $("chips").addEventListener("click", e=>{ const c = e.target.closest(".chip"); if(!c) return; $("minutes").value = c.dataset.min; syncChips(); });
+  $("vSess").addEventListener("click", ()=>{ view="sess"; renderView(); });
+  $("vStats").addEventListener("click", ()=>{ view="stats"; freeUrls(); renderView(); });
+  $("scopeCur").addEventListener("click", ()=>{ scopeAll=false; renderStats(); });
+  $("scopeAll").addEventListener("click", ()=>{ scopeAll=true; renderStats(); });
+  $("startBtn").addEventListener("click", startSession);
+  $("stopBtn").addEventListener("click", stopSession);
+  $("cancelBtn").addEventListener("click", cancelSession);
+  $("goOther").addEventListener("click", ()=>{ if(run){ cur=run.act; saveCur(); renderAll(); } });
+  $("recBtn").addEventListener("click", ()=>{ rec ? stopRec() : startRec(); });
+  $("runNote").addEventListener("input", ()=>{ if(run){ run.note=$("runNote").value; saveRun(); } });
+  $("chips").addEventListener("click", e=>{ const c=e.target.closest(".chip"); if(!c) return; $("minutes").value=c.dataset.min; syncChips(); });
   $("minutes").addEventListener("input", syncChips);
   $("save").addEventListener("click", ()=>{
-    const min = Math.round(Number($("minutes").value));
+    const min=Math.round(Number($("minutes").value));
     if(!min || min<1){ flash("Indique une durée en minutes.", true); $("minutes").focus(); return; }
-    const existed = !!live(selected);
-    data.entries[cur+"/"+selected] = {min:Math.min(min,600), note:$("note").value.trim().slice(0,500), t:Date.now()};
-    changed(); render(); flash(existed ? "Séance mise à jour." : "Séance enregistrée.");
+    const note=$("note").value.trim().slice(0,500);
+    if(editing){
+      const old=data.entries[editing];
+      data.entries[editing]=Object.assign({}, old, {min:Math.min(min,600), note, t:Date.now()});
+      editing=null; flash("Séance mise à jour.");
+    } else {
+      data.entries[cur+"/"+selected+"/"+uid()]={min:Math.min(min,600), note, t:Date.now()};
+      flash("Séance ajoutée.");
+    }
+    $("minutes").value=""; $("note").value="";
+    changed(); freeUrls(); renderSess();
   });
-  $("del").addEventListener("click", ()=>{ data.entries[cur+"/"+selected] = {deleted:true, t:Date.now()}; changed(); render(); flash("Séance supprimée."); });
-  $("prev").addEventListener("click", ()=>{ viewMonth.setMonth(viewMonth.getMonth()-1); renderCal(); });
-  $("next").addEventListener("click", ()=>{ viewMonth.setMonth(viewMonth.getMonth()+1); renderCal(); });
+  $("cancelEdit").addEventListener("click", ()=>{ editing=null; $("minutes").value=""; $("note").value=""; renderForm(); });
+  $("prev").addEventListener("click", ()=>{ viewMonth.setMonth(viewMonth.getMonth()-1); renderCal(dayTotals(cur)); });
+  $("next").addEventListener("click", ()=>{ viewMonth.setMonth(viewMonth.getMonth()+1); renderCal(dayTotals(cur)); });
   $("actSave").addEventListener("click", ()=>{
-    const name = $("actName").value.trim().slice(0,40), goal = Math.round(Number($("actGoal").value));
+    const name=$("actName").value.trim().slice(0,40), goal=Math.round(Number($("actGoal").value));
     if(!name){ flash("Donne un nom à l'activité.", true, "actStatus"); return; }
     if(!(goal>=5)){ flash("Indique un objectif d'au moins 5 minutes.", true, "actStatus"); return; }
-    data.acts[cur] = Object.assign({}, act(), {name, goal:Math.min(goal,3000), t:Date.now()});
+    data.acts[cur]=Object.assign({}, act(), {name, goal:Math.min(goal,3000), t:Date.now()});
     changed(); renderAll(); flash("Réglages enregistrés.", false, "actStatus");
   });
   $("actDel").addEventListener("click", ()=>{
     if(liveActs().length<=1) return;
-    const a = act();
-    if(!confirm("Supprimer l'activité « "+a.name+" » et ses "+daysOf().length+" séance(s) ? C'est définitif, sur tous tes appareils.")) return;
-    const now = Date.now();
-    daysOf().forEach(day=>{ data.entries[cur+"/"+day] = {deleted:true, t:now}; });
-    data.acts[cur] = {deleted:true, t:now};
-    cur = liveActs()[0]; saveCur(); changed(); renderAll();
+    if(run && run.act===cur){ alert("Termine ou annule d'abord la séance en cours."); return; }
+    const a=act(), list=sessions(cur);
+    if(!confirm("Supprimer l'activité « "+a.name+" » et ses "+list.length+" séance(s) ? C'est définitif, sur tous tes appareils.")) return;
+    const now=Date.now();
+    list.forEach(s=>{ (s.clips||[]).forEach(c=>idbDel(c.id)); data.entries[s.key]={deleted:true, t:now}; });
+    data.acts[cur]={deleted:true, t:now};
+    cur=liveActs()[0]; saveCur(); changed(); renderAll();
   });
   $("exp").addEventListener("click", exportData);
   $("imp").addEventListener("click", ()=>$("impFile").click());
   $("impFile").addEventListener("change", e=>{ const f=e.target.files[0]; if(f) importData(f); e.target.value=""; });
   $("connect").addEventListener("click", async ()=>{
-    const tok = $("token").value.trim();
+    const tok=$("token").value.trim();
     if(!tok){ setSync("err","Colle d'abord ton token GitHub."); $("token").focus(); return; }
-    cfg = {token:tok, gistId:""}; saveCfg(); $("token").value = "";
+    cfg={token:tok, gistId:""}; saveCfg(); $("token").value="";
     renderSyncBox(); await sync();
-    if(/Token refusé/.test($("syncTxt").textContent)){
-      cfg = {token:"", gistId:""}; saveCfg(); renderSyncBox();
-      setSync("err","Token refusé par GitHub. Vérifie qu'il est valide et a l'accès aux Gists.");
-    }
+    if(/Token refusé/.test($("syncTxt").textContent)){ cfg={token:"", gistId:""}; saveCfg(); renderSyncBox(); setSync("err","Token refusé par GitHub. Vérifie qu'il est valide et a l'accès aux Gists."); }
   });
   $("syncNow").addEventListener("click", sync);
-  $("disconnect").addEventListener("click", ()=>{ cfg = {token:"", gistId:""}; saveCfg(); renderSyncBox(); setSync("", "Cet appareil est déconnecté. Tes séances restent sur l'appareil et dans le gist."); });
-  document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible") sync(); });
+  $("disconnect").addEventListener("click", ()=>{ cfg={token:"", gistId:""}; saveCfg(); renderSyncBox(); setSync("", "Cet appareil est déconnecté. Tes séances restent sur l'appareil et dans le gist."); });
+  document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible"){ sync(); keepAwake(); } });
   window.addEventListener("online", sync);
+  window.addEventListener("beforeunload", e=>{ if(rec){ e.preventDefault(); e.returnValue=""; } });
 
   // ---------- démarrage ----------
-  data = loadLocal(); cfg = loadCfg();
-  ensureActivity(); saveLocal();
-  renderAll(); renderSyncBox(); sync();
+  data=loadLocal(); cfg=loadCfg(); run=loadRun();
+  ensureActivity();
+  if(run && !data.acts[run.act]){ run=null; saveRun(); }
+  saveLocal();
+  renderAll(); renderSyncBox(); if(run) keepAwake(); sync();
 })();
 </script>
 </body>
