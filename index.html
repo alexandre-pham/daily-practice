@@ -140,6 +140,10 @@ details.card[open] summary{margin-bottom:6px}
 .hbar{display:grid;grid-template-columns:minmax(80px,auto) 1fr auto;gap:8px 12px;align-items:center}
 .hbar .track{height:10px;background:var(--key);border-radius:5px;overflow:hidden}
 .hbar .track i{display:block;height:100%;background:var(--felt)}
+.pausebtn{border-radius:999px;padding:9px 18px}
+.pausebtn.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.recbtn:disabled{opacity:.4;cursor:default}
+.clock.paused{opacity:.45}
 @media (prefers-reduced-motion:reduce){.recbtn.on .recdot{animation:none}}
 </style>
 </head>
@@ -168,7 +172,7 @@ details.card[open] summary{margin-bottom:6px}
     <section class="card timer" aria-labelledby="timerTitle">
       <h2 id="timerTitle">Séance en direct</h2>
       <div id="idleBox">
-        <p class="small" style="margin:0 0 14px">Lance le chronomètre au début, arrête-le à la fin. Tu peux t'enregistrer autant de fois que tu veux pendant la séance.</p>
+        <p class="small" style="margin:0 0 14px">Lance le chronomètre au début, arrête-le à la fin. Mets en pause si tu t'interromps. Tu peux enregistrer ton jeu en MIDI (ordinateur, piano branché en USB) et/ou le son du micro, autant de fois que tu veux.</p>
         <button class="primary big" id="startBtn">Commencer la séance</button>
       </div>
       <div id="otherBox" class="hide">
@@ -179,7 +183,9 @@ details.card[open] summary{margin-bottom:6px}
         <div class="clock" id="clock" aria-live="off">0:00:00</div>
         <div class="small" id="since"></div>
         <div class="actions">
-          <button class="recbtn" id="recBtn"><span class="recdot"></span><span id="recLbl">Enregistrer le son</span></button>
+          <button class="recbtn" id="midiBtn"><span class="recdot"></span><span id="midiLbl">Enregistrer en MIDI</span></button>
+          <button class="recbtn" id="audioBtn"><span class="recdot"></span><span id="audioLbl">Enregistrer le son</span></button>
+          <button class="ghost pausebtn" id="pauseBtn">Pause</button>
         </div>
         <div class="small" id="recMsg" style="margin-top:6px"></div>
         <ul class="clips" id="runClips"></ul>
@@ -277,7 +283,7 @@ details.card[open] summary{margin-bottom:6px}
     <h2 id="syncTitle">Synchronisation GitHub</h2>
     <div class="sync"><span class="dot" id="dot"></span><span id="syncTxt">Non connecté : tes séances restent sur cet appareil.</span></div>
     <div id="connectBox">
-      <p class="small" style="margin:0">Colle un token GitHub ayant uniquement l'accès aux Gists. Tes séances seront stockées dans un gist secret <code>suivi-piano.json</code>, partagé entre tous tes appareils. Les enregistrements audio restent sur l'appareil où ils ont été faits.</p>
+      <p class="small" style="margin:0">Colle un token GitHub ayant uniquement l'accès aux Gists. Tes séances seront stockées dans un gist secret <code>suivi-piano.json</code>, partagé entre tous tes appareils. Les enregistrements restent sur l'appareil où ils ont été faits.</p>
       <label for="token">Token GitHub</label>
       <input id="token" type="password" autocomplete="off" spellcheck="false" placeholder="ghp_… ou github_pat_…">
       <div class="actions"><button class="primary" id="connect">Connecter</button></div>
@@ -292,7 +298,7 @@ details.card[open] summary{margin-bottom:6px}
 
   <section>
     <h2>Sauvegarde</h2>
-    <p class="small" style="margin:0 0 10px">Une copie de secours de tes séances en fichier. Les enregistrements audio se téléchargent un par un depuis chaque séance.</p>
+    <p class="small" style="margin:0 0 10px">Une copie de secours de tes séances en fichier. Les enregistrements (MIDI ou audio) se téléchargent un par un depuis chaque séance.</p>
     <div class="actions" style="margin-top:0">
       <button class="ghost" id="exp">Exporter mes données</button>
       <button class="ghost" id="imp">Importer une sauvegarde</button>
@@ -488,74 +494,159 @@ details.card[open] summary{margin-bottom:6px}
   }
 
 
-  // ---------- enregistrement ----------
-  let rec=null; // {mr, stream, chunks, startedAt, mime, timer}
+  // ---------- enregistrement : MIDI si le navigateur le permet, sinon audio ----------
+  const MIDI_OK = !!navigator.requestMIDIAccess;
+  let rec=null;              // audio : {mr, stream, chunks, startedAt, mime, timer}
+  let mrec=null;             // MIDI  : {startedAt, events:[], timer}
+  const midi={access:null, input:null, asked:false};
+  const held=new Set();
+  const PPQ=480, TEMPO_US=500000;
+
+  function midiStatus(){
+    if(!MIDI_OK) return "";
+    if(!midi.access) return midi.asked ? "Accès au MIDI refusé. Autorise « Appareils MIDI » pour ce site dans les réglages du navigateur." : "";
+    return midi.input ? "Piano : "+midi.input.name : "Aucun piano détecté. Vérifie le câble USB et que le Bluetooth MIDI du piano est désactivé.";
+  }
+  function pickInput(){
+    const list=[...midi.access.inputs.values()];
+    const prev=midi.input && list.find(p=>p.id===midi.input.id);
+    const next=prev || list.find(p=>/kawai|usb midi/i.test(p.name)) || list[0] || null;
+    if(midi.input && midi.input!==next) midi.input.onmidimessage=null;
+    midi.input=next; if(next) next.onmidimessage=onMidi;
+    if(!rec) $("recMsg").textContent=midiStatus();
+  }
+  async function ensureMidi(){
+    if(midi.access) return true;
+    midi.asked=true;
+    try{ midi.access=await navigator.requestMIDIAccess({sysex:false}); midi.access.onstatechange=pickInput; pickInput(); return true; }
+    catch(e){ $("recMsg").textContent=midiStatus(); return false; }
+  }
+  function onMidi(e){
+    const d=e.data; if(!d || !d.length) return;
+    const st=d[0]&0xF0;
+    if(st===0x90 && d[2]>0) held.add(d[1]); else if(st===0x80 || (st===0x90 && d[2]===0)) held.delete(d[1]);
+    if(!mrec) return;
+    if([0x80,0x90,0xA0,0xB0,0xC0,0xD0,0xE0].includes(st)){
+      mrec.events.push({t:e.timeStamp, d:Array.from(d.slice(0, (st===0xC0||st===0xD0) ? 2 : 3))});
+      if(st===0x90 && d[2]>0) mrec.notes++;
+    }
+  }
+  function vlq(n){ const b=[n&0x7F]; n>>=7; while(n>0){ b.unshift((n&0x7F)|0x80); n>>=7; } return b; }
+  function buildSMF(evs){
+    const start=Math.max(0, (evs.length?evs[0].t:0)-200);
+    const trk=[0x00,0xFF,0x51,0x03,(TEMPO_US>>16)&255,(TEMPO_US>>8)&255,TEMPO_US&255, 0x00,0xFF,0x58,0x04,4,2,24,8];
+    let last=0;
+    evs.forEach(ev=>{ const tk=Math.max(0,Math.round((ev.t-start)*PPQ/(TEMPO_US/1000))); trk.push(...vlq(Math.max(0,tk-last)), ...ev.d); last=Math.max(last,tk); });
+    trk.push(0x00,0xFF,0x2F,0x00);
+    const n=trk.length;
+    return new Uint8Array([0x4D,0x54,0x68,0x64,0,0,0,6,0,0,0,1,(PPQ>>8)&255,PPQ&255, 0x4D,0x54,0x72,0x6B,(n>>>24)&255,(n>>>16)&255,(n>>>8)&255,n&255, ...trk]);
+  }
+
   function pickMime(){
     if(!window.MediaRecorder || !MediaRecorder.isTypeSupported) return "";
     for(const m of ["audio/mp4","audio/webm;codecs=opus","audio/webm","audio/ogg;codecs=opus"]) if(MediaRecorder.isTypeSupported(m)) return m;
     return "";
   }
-  async function startRec(){
-    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder){ $("recMsg").textContent="L'enregistrement audio n'est pas disponible dans ce navigateur."; return; }
+  const recording=()=>!!(rec||mrec);
+  async function startMidi(){
+    if(!run || run.pausedAt || mrec || !MIDI_OK) return;
+    if(!(await ensureMidi())) return;
+    if(!midi.input){ $("recMsg").textContent=midiStatus(); return; }
+    mrec={startedAt:Date.now(), events:[], notes:0};
+    mrec.timer=setInterval(renderRecBtn, 500);
+    $("recMsg").textContent=midiStatus(); renderRecBtn();
+  }
+  async function startAudio(){
+    if(!run || run.pausedAt || rec) return;
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder){ $("recMsg").textContent="L'enregistrement du son n'est pas disponible dans ce navigateur."; return; }
     let stream;
-    try{ stream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false, noiseSuppression:false, autoGainControl:false}}); }
+    try{ stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false, noiseSuppression:false, autoGainControl:false}}); }
     catch(e){ $("recMsg").textContent = e && e.name==="NotAllowedError" ? "Accès au micro refusé. Autorise le micro pour ce site dans les réglages du navigateur." : "Impossible d'accéder au micro."; return; }
     const mime=pickMime();
-    let mr; try{ mr = mime ? new MediaRecorder(stream,{mimeType:mime}) : new MediaRecorder(stream); }catch(e){ stream.getTracks().forEach(t=>t.stop()); $("recMsg").textContent="Impossible de démarrer l'enregistrement."; return; }
+    let mr; try{ mr = mime ? new MediaRecorder(stream,{mimeType:mime}) : new MediaRecorder(stream); }catch(e){ stream.getTracks().forEach(t=>t.stop()); $("recMsg").textContent="Impossible de démarrer l'enregistrement du son."; return; }
     const state={mr, stream, chunks:[], startedAt:Date.now(), mime:mr.mimeType||mime};
     rec=state;
     mr.ondataavailable=e=>{ if(e.data && e.data.size) state.chunks.push(e.data); };
     mr.start(1000);
-    $("recMsg").textContent="";
-    rec.timer=setInterval(renderRecBtn, 500);
+    state.timer=setInterval(renderRecBtn, 500);
     renderRecBtn();
   }
-  function stopRec(){
-    return new Promise(resolve=>{
-      if(!rec) return resolve();
-      const r=rec;
+  async function saveClip(blob, clip){
+    try{ await idbPut(clip.id, blob); run.clips.push(clip); saveRun(); }
+    catch(e){ $("recMsg").textContent="L'enregistrement n'a pas pu être sauvegardé sur cet appareil."; }
+  }
+  async function stopMidi(){
+    if(!mrec) return;
+    const r=mrec; mrec=null; clearInterval(r.timer);
+    const evs=r.events.slice(), end=performance.now();
+    held.forEach(n=>evs.push({t:end, d:[0x80,n,0]}));
+    evs.sort((a,b)=>a.t-b.t);
+    if(!r.notes){ $("recMsg").textContent="Aucune note reçue pendant cet enregistrement MIDI. "+midiStatus(); }
+    else if(run){
+      await saveClip(new Blob([buildSMF(evs)],{type:"audio/midi"}), {id:"c"+uid(), at:r.startedAt, dur:Math.round((Date.now()-r.startedAt)/1000), mime:"audio/midi", notes:r.notes});
+      $("recMsg").textContent=midiStatus();
+    }
+    renderRecBtn(); renderRunClips();
+  }
+  async function stopAudio(){
+    if(!rec) return;
+    const r=rec;
+    await new Promise(resolve=>{
       r.mr.onstop=async ()=>{
         clearInterval(r.timer);
         r.stream.getTracks().forEach(t=>t.stop());
         const blob=new Blob(r.chunks,{type:r.mime||"audio/webm"});
         rec=null;
-        if(blob.size && run){
-          const clip={id:"c"+uid(), at:r.startedAt, dur:Math.round((Date.now()-r.startedAt)/1000), mime:blob.type};
-          try{ await idbPut(clip.id, blob); run.clips.push(clip); saveRun(); }
-          catch(e){ $("recMsg").textContent="L'enregistrement n'a pas pu être sauvegardé sur cet appareil."; }
-        }
-        renderRecBtn(); renderRunClips(); resolve();
+        if(blob.size && run) await saveClip(blob, {id:"c"+uid(), at:r.startedAt, dur:Math.round((Date.now()-r.startedAt)/1000), mime:blob.type});
+        resolve();
       };
       try{ r.mr.stop(); }catch(e){ r.mr.onstop(); }
     });
+    renderRecBtn(); renderRunClips();
   }
+  async function stopRec(){ await stopMidi(); await stopAudio(); }
   function renderRecBtn(){
-    const on=!!rec;
-    $("recBtn").classList.toggle("on", on);
-    $("recLbl").textContent = on ? "Arrêter l'enregistrement · "+fmtSec((Date.now()-rec.startedAt)/1000) : "Enregistrer le son";
+    const paused=!!(run && run.pausedAt);
+    $("midiBtn").classList.toggle("hide", !MIDI_OK);
+    $("midiBtn").classList.toggle("on", !!mrec); $("midiBtn").disabled=paused;
+    $("audioBtn").classList.toggle("on", !!rec); $("audioBtn").disabled=paused;
+    $("midiLbl").textContent = mrec ? "Arrêter le MIDI · "+fmtSec((Date.now()-mrec.startedAt)/1000)+" · "+mrec.notes+(mrec.notes>1?" notes":" note") : "Enregistrer en MIDI";
+    $("audioLbl").textContent = rec ? "Arrêter le son · "+fmtSec((Date.now()-rec.startedAt)/1000) : "Enregistrer le son";
   }
 
   // ---------- séance en direct ----------
   let tick=null, wake=null;
-  async function keepAwake(){ try{ if(run && navigator.wakeLock && document.visibilityState==="visible") wake = await navigator.wakeLock.request("screen"); }catch(e){} }
+  async function keepAwake(){ try{ if(run && !run.pausedAt && navigator.wakeLock && document.visibilityState==="visible") wake=await navigator.wakeLock.request("screen"); }catch(e){} }
   function releaseWake(){ try{ wake && wake.release(); }catch(e){} wake=null; }
+  function activeMs(now=Date.now()){ return run ? ((run.pausedAt||now)-run.start-(run.pausedMs||0)) : 0; }
   function startSession(){
     if(run) return;
-    run={act:cur, start:Date.now(), note:"", clips:[]};
+    run={act:cur, start:Date.now(), note:"", clips:[], pausedMs:0, pausedAt:null};
     saveRun(); keepAwake(); renderTimer();
+    if(MIDI_OK) ensureMidi();
+  }
+  async function togglePause(){
+    if(!run) return;
+    if(run.pausedAt){ run.pausedMs=(run.pausedMs||0)+(Date.now()-run.pausedAt); run.pausedAt=null; keepAwake(); }
+    else { await stopRec(); run.pausedAt=Date.now(); releaseWake(); }
+    saveRun(); renderTimer();
   }
   async function stopSession(){
     if(!run) return;
     await stopRec();
     const end=Date.now(), start=run.start;
-    const min=Math.max(1, Math.round((end-start)/60000));
+    if(run.pausedAt){ run.pausedMs=(run.pausedMs||0)+(end-run.pausedAt); run.pausedAt=null; }
+    const min=Math.max(1, Math.round((end-start-(run.pausedMs||0))/60000));
+    const pause=Math.round((run.pausedMs||0)/60000);
     const day=keyOf(new Date(start));
     const key=run.act+"/"+day+"/"+uid();
-    data.entries[key]={min:Math.min(min,600), note:$("runNote").value.trim().slice(0,500), start, end, clips:run.clips, t:Date.now()};
+    const entry={min:Math.min(min,600), note:$("runNote").value.trim().slice(0,500), start, end, clips:run.clips, t:Date.now()};
+    if(pause) entry.pause=pause;
+    data.entries[key]=entry;
     const a=run.act; run=null; saveRun(); releaseWake();
     if(cur!==a){ cur=a; saveCur(); }
     selected=day; changed(); renderAll();
-    flash("Séance enregistrée : "+fmtDur(min)+".");
+    flash("Séance enregistrée : "+fmtDur(min)+(pause?" (pause de "+fmtDur(pause)+" non comptée)":"")+".");
   }
   async function cancelSession(){
     if(!run) return;
@@ -573,17 +664,27 @@ details.card[open] summary{margin-bottom:6px}
     clearInterval(tick); tick=null;
     if(running && !mine){ $("otherName").textContent = data.acts[run.act] ? data.acts[run.act].name : "une autre activité"; }
     if(mine){
-      $("since").textContent="Commencée à "+fmtTime.format(new Date(run.start));
+      const paused=!!run.pausedAt, pm=Math.round(((run.pausedMs||0)+(paused?Date.now()-run.pausedAt:0))/60000);
+      $("since").textContent="Commencée à "+fmtTime.format(new Date(run.start))+(paused?" · en pause":"")+(pm?" · "+fmtDur(pm)+" de pause":"");
+      $("clock").classList.toggle("paused", paused);
+      $("pauseBtn").textContent = paused ? "Reprendre" : "Pause";
+      $("pauseBtn").classList.toggle("on", paused);
       if(document.activeElement!==$("runNote")) $("runNote").value=run.note||"";
-      const upd=()=>{ $("clock").textContent=fmtClock(Date.now()-run.start); };
-      upd(); tick=setInterval(upd,1000);
+      const upd=()=>{ $("clock").textContent=fmtClock(activeMs()); };
+      upd(); if(!paused) tick=setInterval(upd,1000);
       renderRecBtn(); renderRunClips();
+      if(!recording()) $("recMsg").textContent = paused ? "Séance en pause : le temps n'est plus compté." : midiStatus();
     }
   }
   function renderRunClips(){
     const ul=$("runClips"); ul.textContent="";
     if(!run) return;
-    run.clips.forEach((c,i)=>ul.appendChild(clipItem(c, "Enregistrement "+(i+1)+" · "+fmtSec(c.dur))));
+    run.clips.forEach((c,i)=>ul.appendChild(clipItem(c, clipLabel(c,i,run.clips))));
+  }
+  function clipLabel(c,i,all){
+    const isMidi=c.mime==="audio/midi";
+    const n=(all||[c]).slice(0,i+1).filter(x=>(x.mime==="audio/midi")===isMidi).length;
+    return (isMidi ? "MIDI " : "Son ")+n+" · "+fmtSec(c.dur)+(c.notes?" · "+c.notes+(c.notes>1?" notes":" note"):"");
   }
   const urls=[];
   function clipItem(c, label){
@@ -592,9 +693,12 @@ details.card[open] summary{margin-bottom:6px}
     idbGet(c.id).then(blob=>{
       if(!blob){ const s=document.createElement("span"); s.className="small"; s.textContent="(sur un autre appareil)"; li.appendChild(s); return; }
       const u=URL.createObjectURL(blob); urls.push(u);
-      const au=document.createElement("audio"); au.controls=true; au.preload="metadata"; au.src=u;
-      const a=document.createElement("a"); a.href=u; a.download="enregistrement-"+keyOf(new Date(c.at))+"-"+fmtTime.format(new Date(c.at)).replace(":","h")+"."+extOf(c.mime); a.textContent="Télécharger";
-      li.append(au,a);
+      const isMidi=c.mime==="audio/midi";
+      if(!isMidi){ const au=document.createElement("audio"); au.controls=true; au.preload="metadata"; au.src=u; li.appendChild(au); }
+      const a=document.createElement("a"); a.href=u;
+      a.download=(isMidi?"piano-":"enregistrement-")+keyOf(new Date(c.at))+"-"+fmtTime.format(new Date(c.at)).replace(":","h")+"."+(isMidi?"mid":extOf(c.mime));
+      a.textContent = isMidi ? "Télécharger .mid" : "Télécharger";
+      li.appendChild(a);
     }).catch(()=>{ const s=document.createElement("span"); s.className="small"; s.textContent="(indisponible)"; li.appendChild(s); });
     return li;
   }
@@ -648,7 +752,7 @@ details.card[open] summary{margin-bottom:6px}
     renderTimer(); renderDay(); renderCal(tot); renderLog();
   }
   function sessLabel(s){
-    if(s.start && s.end) return fmtTime.format(new Date(s.start))+" – "+fmtTime.format(new Date(s.end))+" · "+fmtDur(s.min);
+    if(s.start && s.end) return fmtTime.format(new Date(s.start))+" – "+fmtTime.format(new Date(s.end))+" · "+fmtDur(s.min)+(s.pause?" (pause "+fmtDur(s.pause)+")":"");
     return "Ajoutée à la main · "+fmtDur(s.min);
   }
   function renderDay(){
@@ -675,7 +779,7 @@ details.card[open] summary{margin-bottom:6px}
       if(s.note){ const n=document.createElement("div"); n.className="note"; n.textContent=s.note; li.appendChild(n); }
       if(s.clips && s.clips.length){
         const cl=document.createElement("ul"); cl.className="clips";
-        s.clips.forEach((c,i)=>cl.appendChild(clipItem(c, "Enregistrement "+(i+1)+" · "+fmtSec(c.dur))));
+        s.clips.forEach((c,i)=>cl.appendChild(clipItem(c, clipLabel(c,i,s.clips))));
         li.appendChild(cl);
       }
       ul.appendChild(li);
@@ -855,7 +959,9 @@ details.card[open] summary{margin-bottom:6px}
   $("stopBtn").addEventListener("click", stopSession);
   $("cancelBtn").addEventListener("click", cancelSession);
   $("goOther").addEventListener("click", ()=>{ if(run){ cur=run.act; saveCur(); renderAll(); } });
-  $("recBtn").addEventListener("click", ()=>{ rec ? stopRec() : startRec(); });
+  $("midiBtn").addEventListener("click", ()=>{ mrec ? stopMidi() : startMidi(); });
+  $("audioBtn").addEventListener("click", ()=>{ rec ? stopAudio() : startAudio(); });
+  $("pauseBtn").addEventListener("click", togglePause);
   $("runNote").addEventListener("input", ()=>{ if(run){ run.note=$("runNote").value; saveRun(); } });
   $("chips").addEventListener("click", e=>{ const c=e.target.closest(".chip"); if(!c) return; $("minutes").value=c.dataset.min; syncChips(); });
   $("minutes").addEventListener("input", syncChips);
@@ -908,14 +1014,14 @@ details.card[open] summary{margin-bottom:6px}
   $("disconnect").addEventListener("click", ()=>{ cfg={token:"", gistId:""}; saveCfg(); renderSyncBox(); setSync("", "Cet appareil est déconnecté. Tes séances restent sur l'appareil et dans le gist."); });
   document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible"){ sync(); keepAwake(); } });
   window.addEventListener("online", sync);
-  window.addEventListener("beforeunload", e=>{ if(rec){ e.preventDefault(); e.returnValue=""; } });
+  window.addEventListener("beforeunload", e=>{ if(rec||mrec){ e.preventDefault(); e.returnValue=""; } });
 
   // ---------- démarrage ----------
   data=loadLocal(); cfg=loadCfg(); run=loadRun();
   ensureActivity();
   if(run && !data.acts[run.act]){ run=null; saveRun(); }
   saveLocal();
-  renderAll(); renderSyncBox(); if(run) keepAwake(); sync();
+  renderAll(); renderSyncBox(); if(run){ keepAwake(); if(MIDI_OK) ensureMidi(); } sync();
 })();
 </script>
 </body>
