@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Suivi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,500;7..72,700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F3F5F8; --surface:#FFFFFF; --ink:#1B2130; --muted:#5D6678; --line:#D9DEE6;
+  --key:#E6E9EF; --felt:#9E2238; --felt-soft:#F3DCE0; --ok:#2F6B4F;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#121620; --surface:#1A1F2B; --ink:#E8EBF1; --muted:#9AA3B5; --line:#2C3342;
+    --key:#242B39; --felt:#E0566E; --felt-soft:#3A1F27; --ok:#6FC39A;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121620; --surface:#1A1F2B; --ink:#E8EBF1; --muted:#9AA3B5; --line:#2C3342;
+  --key:#242B39; --felt:#E0566E; --felt-soft:#3A1F27; --ok:#6FC39A;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);
+  font:16px/1.5 "Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:640px;margin:0 auto;padding:28px 18px 48px}
+h1{font-family:Literata,Georgia,serif;font-weight:700;font-size:2rem;line-height:1.1;margin:0}
+h2{font-family:Literata,Georgia,serif;font-weight:500;font-size:1.25rem;margin:0 0 12px}
+.lead{color:var(--muted);margin:6px 0 0}
+
+/* the felt strip: streak hero */
+.hero{margin:22px 0 26px;display:flex;align-items:stretch;border-radius:14px;overflow:hidden;background:var(--surface);border:1px solid var(--line)}
+.hero .felt{width:10px;background:var(--felt)}
+.hero .body{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:4px 18px;padding:16px 18px}
+.big{font-family:Literata,Georgia,serif;font-size:2.6rem;font-weight:700;line-height:1}
+.small{color:var(--muted);font-size:.92rem}
+.bar{grid-column:1/-1;height:8px;border-radius:4px;background:var(--key);margin-top:12px;overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--felt);width:0;transition:width .4s}
+.warn{grid-column:1/-1;margin-top:10px;padding:8px 10px;border-radius:8px;background:var(--felt-soft);color:var(--ink);font-size:.92rem}
+.warn[hidden]{display:none}
+
+section{margin-top:28px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px}
+.daylabel{font-weight:600;margin-bottom:12px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+button{font:inherit;color:inherit;cursor:pointer}
+.chip{border:1px solid var(--line);background:transparent;border-radius:999px;padding:6px 14px}
+.chip[aria-pressed="true"]{background:var(--felt);border-color:var(--felt);color:#fff}
+label{display:block;font-size:.92rem;color:var(--muted);margin:10px 0 4px}
+input,textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 10px;width:100%}
+input[type=number]{width:110px}
+textarea{min-height:64px;resize:vertical}
+.actions{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;align-items:center}
+.primary{background:var(--ink);color:var(--bg);border:0;border-radius:8px;padding:10px 16px;font-weight:600}
+.ghost{background:transparent;border:1px solid var(--line);border-radius:8px;padding:10px 14px;color:var(--muted)}
+.status{font-size:.9rem;color:var(--ok)}
+:focus-visible{outline:2px solid var(--felt);outline-offset:2px}
+
+/* calendar as a keyboard of days */
+.calhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.calhead h2{margin:0;text-transform:capitalize}
+.nav{display:flex;gap:6px}
+.nav button{border:1px solid var(--line);background:var(--surface);border-radius:8px;width:38px;height:34px}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.dow{text-align:center;font-size:.8rem;color:var(--muted);padding-bottom:2px}
+.day{aspect-ratio:3/4;border:1px solid var(--line);border-radius:4px 4px 9px 9px;background:var(--surface);
+  display:flex;flex-direction:column;justify-content:flex-end;align-items:center;padding:4px 2px;font-size:.85rem;position:relative}
+.day.empty{visibility:hidden}
+.day.played{background:var(--felt);border-color:var(--felt);color:#fff}
+.day.played .m{color:#fff;opacity:.9}
+.day .m{font-size:.7rem;color:var(--muted);min-height:1em}
+.day.today{box-shadow:inset 0 0 0 2px var(--ink)}
+.day.sel{outline:2px solid var(--felt);outline-offset:2px}
+.day.future{opacity:.45;cursor:default}
+
+.log{list-style:none;margin:0;padding:0}
+.log li{padding:10px 0;border-bottom:1px solid var(--line);display:flex;gap:12px}
+.log li:last-child{border-bottom:0}
+.log .d{min-width:92px;color:var(--muted);font-size:.92rem}
+.log .t{flex:1}
+.log .t b{font-weight:600}
+.emptymsg{color:var(--muted)}
+.foot{margin-top:28px;font-size:.85rem;color:var(--muted)}
+.sync{display:flex;align-items:center;gap:8px;font-size:.92rem;color:var(--muted);margin-bottom:10px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--line);flex:none}
+.dot.ok{background:var(--ok)} .dot.err{background:var(--felt)} .dot.busy{background:var(--muted)}
+.sync a{color:inherit}
+.hide{display:none!important}
+@media (prefers-reduced-motion:reduce){.bar>i{transition:none}}
+
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0 0}
+.tab{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 16px;font-weight:500}
+.tab[aria-selected="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.tab.add{color:var(--muted);border-style:dashed}
+details.card summary{cursor:pointer;font-family:Literata,Georgia,serif;font-size:1.1rem}
+details.card[open] summary{margin-bottom:6px}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+.row>div{flex:1;min-width:140px}
+.danger{color:var(--felt);border-color:var(--felt)}
+</style>
+</head>
+<body>
+<main>
+  <h1 id="title">Suivi</h1>
+  <p class="lead">Un objectif : pratiquer chaque jour. Les jours difficiles, 5 minutes comptent aussi.</p>
+
+  <div class="tabs" role="tablist" id="tabs" aria-label="Activités"></div>
+
+  <div class="hero" aria-live="polite">
+    <div class="felt"></div>
+    <div class="body">
+      <div><div class="big" id="streak">0</div><div class="small" id="streakLbl">jour d'affilée</div></div>
+      <div><div class="big" id="week">0</div><div class="small" id="weekLbl">minutes cette semaine</div></div>
+      <div class="bar"><i id="weekBar"></i></div>
+      <div class="warn" id="warn" hidden>Hier n'est pas coché. Fais au moins 5 minutes aujourd'hui pour ne pas rater deux jours d'affilée.</div>
+    </div>
+  </div>
+
+  <section class="card" aria-labelledby="formTitle">
+    <h2 id="formTitle">Noter une séance</h2>
+    <div class="daylabel" id="dayLabel"></div>
+    <div class="chips" id="chips">
+      <button class="chip" data-min="5">5 min</button>
+      <button class="chip" data-min="15">15 min</button>
+      <button class="chip" data-min="30">30 min</button>
+      <button class="chip" data-min="45">45 min</button>
+      <button class="chip" data-min="60">1 h</button>
+    </div>
+    <label for="minutes">Durée en minutes</label>
+    <input id="minutes" type="number" min="1" max="600" inputmode="numeric">
+    <label for="note">Ce que tu as travaillé (facultatif)</label>
+    <textarea id="note" placeholder="Ex. : mesures 9 à 12 mains séparées, 2 exercices de déchiffrage"></textarea>
+    <div class="actions">
+      <button class="primary" id="save">Enregistrer la séance</button>
+      <button class="ghost" id="del" hidden>Supprimer</button>
+      <span class="status" id="status"></span>
+    </div>
+  </section>
+
+  <section>
+    <div class="calhead">
+      <h2 id="monthTitle"></h2>
+      <div class="nav">
+        <button id="prev" aria-label="Mois précédent">‹</button>
+        <button id="next" aria-label="Mois suivant">›</button>
+      </div>
+    </div>
+    <div class="grid" id="grid"></div>
+    <p class="small" style="margin-top:8px">Touche un jour pour le modifier ou ajouter une séance oubliée.</p>
+  </section>
+
+  <section>
+    <h2>Dernières séances</h2>
+    <ul class="log" id="log"></ul>
+  </section>
+
+  <section>
+    <details class="card" id="actBox">
+      <summary id="actSummary">Réglages de l'activité</summary>
+      <div class="row">
+        <div><label for="actName">Nom</label><input id="actName" maxlength="40"></div>
+        <div><label for="actGoal">Objectif par semaine (minutes)</label><input id="actGoal" type="number" min="5" max="3000" inputmode="numeric"></div>
+      </div>
+      <div class="actions">
+        <button class="primary" id="actSave">Enregistrer les réglages</button>
+        <button class="ghost danger" id="actDel">Supprimer l'activité</button>
+        <span class="status" id="actStatus"></span>
+      </div>
+    </details>
+  </section>
+
+  <section class="card" aria-labelledby="syncTitle">
+    <h2 id="syncTitle">Synchronisation GitHub</h2>
+    <div class="sync"><span class="dot" id="dot"></span><span id="syncTxt">Non connecté : tes séances restent sur cet appareil.</span></div>
+    <div id="connectBox">
+      <p class="small" style="margin:0">Colle un token GitHub ayant uniquement l'accès aux Gists. Tes séances seront stockées dans un gist secret <code>suivi-piano.json</code>, partagé entre tous tes appareils.</p>
+      <label for="token">Token GitHub</label>
+      <input id="token" type="password" autocomplete="off" spellcheck="false" placeholder="ghp_… ou github_pat_…">
+      <div class="actions"><button class="primary" id="connect">Connecter</button></div>
+    </div>
+    <div id="connectedBox" class="hide">
+      <div class="actions" style="margin-top:0">
+        <button class="ghost" id="syncNow">Synchroniser maintenant</button>
+        <button class="ghost" id="disconnect">Déconnecter cet appareil</button>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Sauvegarde</h2>
+    <p class="small" style="margin:0 0 10px">Une copie de secours en fichier, au cas où.</p>
+    <div class="actions" style="margin-top:0">
+      <button class="ghost" id="exp">Exporter mes données</button>
+      <button class="ghost" id="imp">Importer une sauvegarde</button>
+      <input type="file" id="impFile" accept="application/json,.json" hidden>
+    </div>
+  </section>
+</main>
+
+<script>
+(function(){
+  const LS_DATA = "suivi-piano-v3";
+  const LS_OLD  = "suivi-piano-v1";
+  const LS_CFG  = "suivi-piano-gist";
+  const LS_CUR  = "suivi-piano-current";
+  const API = "https://api.github.com";
+  const FILE = "suivi-piano.json";
+  const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+  // acts:    { id: {name, goal, t} | {deleted:true, t} }
+  // entries: { "id/YYYY-MM-DD": {min, note, t} | {deleted:true, t} }
+  let data = {acts:{}, entries:{}};
+  let cfg = {token:"", gistId:""};
+  let cur = "";
+  let selected = keyOf(new Date());
+  let viewMonth = new Date(); viewMonth.setDate(1);
+
+  const $ = id => document.getElementById(id);
+  const fmtLong = new Intl.DateTimeFormat("fr-FR",{weekday:"long",day:"numeric",month:"long"});
+  const fmtShort = new Intl.DateTimeFormat("fr-FR",{weekday:"short",day:"numeric",month:"short"});
+  const fmtMonth = new Intl.DateTimeFormat("fr-FR",{month:"long",year:"numeric"});
+  const fmtTime = new Intl.DateTimeFormat("fr-FR",{hour:"2-digit",minute:"2-digit"});
+
+  function keyOf(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+  function dateOf(k){ const [y,m,d]=k.split("-").map(Number); return new Date(y,m-1,d); }
+  function addDays(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
+  function todayKey(){ return keyOf(new Date()); }
+  function liveActs(){ return Object.keys(data.acts).filter(id=>!data.acts[id].deleted).sort((a,b)=>(data.acts[a].created||0)-(data.acts[b].created||0) || a.localeCompare(b)); }
+  function act(){ return data.acts[cur]; }
+  function live(day, id=cur){ const e = data.entries[id+"/"+day]; return e && !e.deleted ? e : null; }
+  function newId(name){ return (name.toLowerCase().normalize("NFD").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,20)||"activite")+"-"+Math.random().toString(36).slice(2,6); }
+
+  // ---------- normalisation & migration ----------
+  function normalize(obj){
+    const out = {acts:{}, entries:{}};
+    if(!obj || typeof obj!=="object") return out;
+    if(obj.acts && obj.entries){ // v3
+      for(const id in obj.acts){ const a=obj.acts[id]; if(a && typeof a==="object") out.acts[id]=a; }
+      for(const k in obj.entries){ const [id,day]=k.split("/"); if(id && DATE_RE.test(day||"") && obj.entries[k]) out.entries[k]=obj.entries[k]; }
+      return out;
+    }
+    const old = obj.entries && typeof obj.entries==="object" ? obj.entries : obj; // v1/v2
+    let any = false;
+    for(const k in old){
+      if(!DATE_RE.test(k) || !old[k]) continue;
+      out.entries["piano/"+k] = Object.assign({t:0}, old[k]); any = true;
+    }
+    if(any) out.acts.piano = {name:"Piano", goal:210, t:0, created:0};
+    return out;
+  }
+
+  function loadLocal(){
+    try{
+      const raw = localStorage.getItem(LS_DATA);
+      if(raw) return normalize(JSON.parse(raw));
+      const old = localStorage.getItem(LS_OLD);
+      if(old) return normalize(JSON.parse(old));
+    }catch(e){}
+    return {acts:{}, entries:{}};
+  }
+  function saveLocal(){ try{ localStorage.setItem(LS_DATA, JSON.stringify(data)); }catch(e){} }
+  function loadCfg(){ try{ return Object.assign({token:"",gistId:""}, JSON.parse(localStorage.getItem(LS_CFG)||"{}")); }catch(e){ return {token:"",gistId:""}; } }
+  function saveCfg(){ try{ localStorage.setItem(LS_CFG, JSON.stringify(cfg)); }catch(e){} }
+  function saveCur(){ try{ localStorage.setItem(LS_CUR, cur); }catch(e){} }
+
+  function ensureActivity(){
+    const ids = liveActs();
+    if(!ids.length){
+      data.acts.piano = {name:"Piano", goal:210, t:0, created:0};
+      saveLocal();
+    }
+    let saved = ""; try{ saved = localStorage.getItem(LS_CUR)||""; }catch(e){}
+    const list = liveActs();
+    cur = list.includes(cur) ? cur : (list.includes(saved) ? saved : list[0]);
+  }
+
+  // ---------- merge ----------
+  function mergeMap(a,b){
+    const out = Object.assign({}, a);
+    for(const k in b){ if(b[k] && (!out[k] || (b[k].t||0) > (out[k].t||0))) out[k] = b[k]; }
+    return out;
+  }
+  function merge(a,b){ return {acts:mergeMap(a.acts,b.acts), entries:mergeMap(a.entries,b.entries)}; }
+  function sortObj(o){ const r={}; Object.keys(o).sort().forEach(k=>r[k]=o[k]); return r; }
+  function canon(d){ return JSON.stringify({acts:sortObj(d.acts), entries:sortObj(d.entries)}); }
+  function payload(){ return JSON.stringify({app:"suivi-piano", version:3, acts:sortObj(data.acts), entries:sortObj(data.entries)}, null, 1); }
+
+  // ---------- GitHub Gist ----------
+  async function gh(path, opts={}){
+    const headers = {"Accept":"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28","Authorization":"Bearer "+cfg.token};
+    if(opts.body) headers["Content-Type"]="application/json";
+    const r = await fetch(API+path, {method:opts.method||"GET", headers, body:opts.body, cache:"no-store"});
+    if(r.status===401) throw {kind:"token"};
+    if(r.status===403 || r.status===429) throw {kind:"limit"};
+    if(r.status===404) throw {kind:"notfound"};
+    if(!r.ok) throw {kind:"http", status:r.status};
+    return r.status===204 ? null : r.json();
+  }
+  async function findOrCreateGist(){
+    for(let page=1; page<=10; page++){
+      const list = await gh("/gists?per_page=100&page="+page);
+      const hit = list.find(g => g.files && g.files[FILE]);
+      if(hit) return hit.id;
+      if(list.length<100) break;
+    }
+    const g = await gh("/gists", {method:"POST", body:JSON.stringify({description:"Suivi d'activités (données de la page de suivi)", public:false, files:{[FILE]:{content:payload()}}})});
+    return g.id;
+  }
+  async function readGist(){
+    const g = await gh("/gists/"+cfg.gistId);
+    const f = g.files && g.files[FILE];
+    if(!f) return {acts:{}, entries:{}};
+    let text = f.content;
+    if(f.truncated) text = await (await fetch(f.raw_url,{cache:"no-store"})).text();
+    try{ return normalize(JSON.parse(text)); }catch(e){ return {acts:{}, entries:{}}; }
+  }
+
+  let chain = Promise.resolve();
+  function sync(){ if(!cfg.token) return Promise.resolve(); chain = chain.then(doSync, doSync); return chain; }
+  async function doSync(){
+    setSync("busy","Synchronisation…");
+    try{
+      if(!cfg.gistId){ cfg.gistId = await findOrCreateGist(); saveCfg(); }
+      let remote;
+      try{ remote = await readGist(); }
+      catch(e){ if(e.kind==="notfound"){ cfg.gistId = await findOrCreateGist(); saveCfg(); remote = await readGist(); } else throw e; }
+      const merged = merge(data, remote);
+      const changedLocal = canon(merged)!==canon(data);
+      data = merged; saveLocal();
+      if(changedLocal){ ensureActivity(); renderAll(); }
+      if(canon(merged)!==canon(remote)){
+        await gh("/gists/"+cfg.gistId, {method:"PATCH", body:JSON.stringify({files:{[FILE]:{content:payload()}}})});
+      }
+      setSync("ok", "Synchronisé à "+fmtTime.format(new Date())+'. <a href="https://gist.github.com/'+encodeURIComponent(cfg.gistId)+'" target="_blank" rel="noopener">Voir le gist</a>', true);
+    }catch(e){
+      if(e && e.kind==="token") setSync("err","Token refusé par GitHub. Vérifie qu'il est valide et a l'accès aux Gists, puis reconnecte cet appareil.");
+      else if(e && e.kind==="limit") setSync("err","GitHub limite temporairement les requêtes. Réessaie dans quelques minutes.");
+      else if(!navigator.onLine) setSync("err","Hors ligne. Tes séances sont gardées sur cet appareil et seront synchronisées au retour du réseau.");
+      else setSync("err","La synchronisation a échoué. Tes séances sont gardées sur cet appareil. Réessaie avec « Synchroniser maintenant ».");
+    }
+  }
+  let pushT;
+  function changed(){ saveLocal(); clearTimeout(pushT); if(cfg.token) pushT = setTimeout(sync, 1200); }
+  function setSync(state, msg, isHtml){ $("dot").className = "dot "+(state||""); if(isHtml) $("syncTxt").innerHTML = msg; else $("syncTxt").textContent = msg; }
+  function renderSyncBox(){
+    const on = !!cfg.token;
+    $("connectBox").classList.toggle("hide", on);
+    $("connectedBox").classList.toggle("hide", !on);
+    if(!on) setSync("", "Non connecté : tes séances restent sur cet appareil.");
+  }
+
+  // ---------- stats ----------
+  function streak(){
+    let d = new Date(); if(!live(keyOf(d))) d = addDays(d,-1);
+    let n = 0; while(live(keyOf(d))){ n++; d = addDays(d,-1); } return n;
+  }
+  function weekMinutes(){
+    const now = new Date(), dow = (now.getDay()+6)%7, start = addDays(now,-dow);
+    let total = 0; for(let i=0;i<=dow;i++){ const e = live(keyOf(addDays(start,i))); if(e) total += e.min||0; } return total;
+  }
+  function daysOf(id=cur){ const p = id+"/"; return Object.keys(data.entries).filter(k=>k.startsWith(p) && !data.entries[k].deleted).map(k=>k.slice(p.length)); }
+
+  // ---------- render ----------
+  function renderAll(){ renderTabs(); render(); renderActBox(); }
+  function renderTabs(){
+    const box = $("tabs"); box.textContent = "";
+    liveActs().forEach(id=>{
+      const b = document.createElement("button");
+      b.className = "tab"; b.setAttribute("role","tab"); b.setAttribute("aria-selected", String(id===cur));
+      b.textContent = data.acts[id].name;
+      b.addEventListener("click", ()=>{ cur = id; saveCur(); renderAll(); });
+      box.appendChild(b);
+    });
+    const add = document.createElement("button");
+    add.className = "tab add"; add.textContent = "+ Ajouter une activité";
+    add.addEventListener("click", addActivity);
+    box.appendChild(add);
+  }
+  function render(){
+    const a = act();
+    $("title").textContent = "Suivi " + a.name.toLowerCase();
+    document.title = "Suivi " + a.name.toLowerCase();
+    const s = streak();
+    $("streak").textContent = s;
+    $("streakLbl").textContent = s>1 ? "jours d'affilée" : "jour d'affilée";
+    const w = weekMinutes(), goal = a.goal||210;
+    $("week").textContent = w;
+    $("weekLbl").textContent = "minutes cette semaine, objectif "+goal;
+    $("weekBar").style.width = Math.min(100, w/goal*100)+"%";
+    $("warn").hidden = !!live(todayKey()) || !!live(keyOf(addDays(new Date(),-1))) || !daysOf().length;
+    renderForm(); renderCal(); renderLog();
+  }
+  function renderForm(){
+    const d = dateOf(selected), e = live(selected);
+    $("dayLabel").textContent = (selected===todayKey() ? "Aujourd'hui, " : "") + fmtLong.format(d);
+    $("minutes").value = e ? e.min : "";
+    $("note").value = e ? (e.note||"") : "";
+    $("del").hidden = !e;
+    $("save").textContent = e ? "Mettre à jour la séance" : "Enregistrer la séance";
+    $("note").placeholder = cur==="piano" ? "Ex. : mesures 9 à 12 mains séparées, 2 exercices de déchiffrage" : "Ex. : ce que tu as travaillé aujourd'hui";
+    syncChips();
+  }
+  function syncChips(){ const v = Number($("minutes").value); document.querySelectorAll(".chip").forEach(c=>c.setAttribute("aria-pressed", String(Number(c.dataset.min)===v))); }
+  function renderCal(){
+    $("monthTitle").textContent = fmtMonth.format(viewMonth);
+    const g = $("grid"); g.textContent = "";
+    ["lun","mar","mer","jeu","ven","sam","dim"].forEach(n=>{ const x=document.createElement("div"); x.className="dow"; x.textContent=n; g.appendChild(x); });
+    const first = new Date(viewMonth.getFullYear(), viewMonth.getMonth(), 1);
+    for(let i=0;i<(first.getDay()+6)%7;i++){ const x=document.createElement("div"); x.className="day empty"; g.appendChild(x); }
+    const days = new Date(viewMonth.getFullYear(), viewMonth.getMonth()+1, 0).getDate(), tk = todayKey();
+    for(let i=1;i<=days;i++){
+      const d = new Date(viewMonth.getFullYear(), viewMonth.getMonth(), i), k = keyOf(d), e = live(k);
+      const b = document.createElement("button");
+      b.className = "day"+(e?" played":"")+(k===tk?" today":"")+(k===selected?" sel":"")+(k>tk?" future":"");
+      const num = document.createElement("span"); num.textContent = i;
+      const m = document.createElement("span"); m.className="m"; m.textContent = e ? e.min+"′" : "";
+      b.append(num,m);
+      b.setAttribute("aria-label", fmtLong.format(d)+(e ? ", "+e.min+" minutes" : ", pas de séance"));
+      if(k>tk) b.disabled = true;
+      else b.addEventListener("click", ()=>{ selected = k; render(); $("formTitle").scrollIntoView({behavior: matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth", block:"start"}); });
+      g.appendChild(b);
+    }
+  }
+  function renderLog(){
+    const ul = $("log"); ul.textContent = "";
+    const days = daysOf().sort().reverse().slice(0,10);
+    if(!days.length){ const li = document.createElement("li"); li.className="emptymsg"; li.textContent = "Aucune séance pour l'instant. Note ta première séance ci-dessus."; ul.appendChild(li); return; }
+    days.forEach(k=>{
+      const e = live(k), li = document.createElement("li");
+      const d = document.createElement("span"); d.className="d"; d.textContent = fmtShort.format(dateOf(k));
+      const t = document.createElement("span"); t.className="t";
+      const b = document.createElement("b"); b.textContent = e.min+" min"; t.appendChild(b);
+      if(e.note) t.appendChild(document.createTextNode(" · "+e.note));
+      li.append(d,t); ul.appendChild(li);
+    });
+  }
+  function renderActBox(){
+    const a = act();
+    $("actSummary").textContent = "Réglages : "+a.name;
+    $("actName").value = a.name;
+    $("actGoal").value = a.goal||210;
+    $("actDel").disabled = liveActs().length<=1;
+    $("actDel").title = liveActs().length<=1 ? "Il faut garder au moins une activité." : "";
+  }
+  let flashT;
+  function flash(msg, warn, el="status"){ const s = $(el); s.textContent = msg; s.style.color = warn ? "var(--felt)" : "var(--ok)"; clearTimeout(flashT); flashT = setTimeout(()=>{ s.textContent=""; }, 3000); }
+
+  // ---------- activités ----------
+  function addActivity(){
+    const name = (prompt("Nom de la nouvelle activité (ex. : Guitare)")||"").trim().slice(0,40);
+    if(!name) return;
+    const existing = liveActs().find(id=>data.acts[id].name.toLowerCase()===name.toLowerCase());
+    if(existing){ cur = existing; saveCur(); renderAll(); return; }
+    const id = newId(name);
+    data.acts[id] = {name, goal:210, t:Date.now(), created:Date.now()};
+    cur = id; saveCur(); changed(); renderAll();
+    $("actBox").open = true;
+  }
+
+  // ---------- sauvegarde ----------
+  function exportData(){
+    const blob = new Blob([payload()],{type:"application/json"});
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "suivi-"+todayKey()+".json";
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+  }
+  function importData(file){
+    const r = new FileReader();
+    r.onload = ()=>{
+      try{
+        const inc = normalize(JSON.parse(r.result)), now = Date.now();
+        const n = Object.keys(inc.entries).filter(k=>!inc.entries[k].deleted).length;
+        if(!n && !Object.keys(inc.acts).length) throw 0;
+        for(const k in inc.entries) inc.entries[k] = Object.assign({}, inc.entries[k], {t:now});
+        for(const k in inc.acts) inc.acts[k] = Object.assign({}, inc.acts[k], {t:now});
+        data = merge(data, inc); ensureActivity(); changed(); renderAll();
+        flash(n+" séance(s) importée(s).");
+      }catch(e){ flash("Ce fichier n'est pas une sauvegarde du suivi.", true); }
+    };
+    r.readAsText(file);
+  }
+
+  // ---------- événements ----------
+  $("chips").addEventListener("click", e=>{ const c = e.target.closest(".chip"); if(!c) return; $("minutes").value = c.dataset.min; syncChips(); });
+  $("minutes").addEventListener("input", syncChips);
+  $("save").addEventListener("click", ()=>{
+    const min = Math.round(Number($("minutes").value));
+    if(!min || min<1){ flash("Indique une durée en minutes.", true); $("minutes").focus(); return; }
+    const existed = !!live(selected);
+    data.entries[cur+"/"+selected] = {min:Math.min(min,600), note:$("note").value.trim().slice(0,500), t:Date.now()};
+    changed(); render(); flash(existed ? "Séance mise à jour." : "Séance enregistrée.");
+  });
+  $("del").addEventListener("click", ()=>{ data.entries[cur+"/"+selected] = {deleted:true, t:Date.now()}; changed(); render(); flash("Séance supprimée."); });
+  $("prev").addEventListener("click", ()=>{ viewMonth.setMonth(viewMonth.getMonth()-1); renderCal(); });
+  $("next").addEventListener("click", ()=>{ viewMonth.setMonth(viewMonth.getMonth()+1); renderCal(); });
+  $("actSave").addEventListener("click", ()=>{
+    const name = $("actName").value.trim().slice(0,40), goal = Math.round(Number($("actGoal").value));
+    if(!name){ flash("Donne un nom à l'activité.", true, "actStatus"); return; }
+    if(!(goal>=5)){ flash("Indique un objectif d'au moins 5 minutes.", true, "actStatus"); return; }
+    data.acts[cur] = Object.assign({}, act(), {name, goal:Math.min(goal,3000), t:Date.now()});
+    changed(); renderAll(); flash("Réglages enregistrés.", false, "actStatus");
+  });
+  $("actDel").addEventListener("click", ()=>{
+    if(liveActs().length<=1) return;
+    const a = act();
+    if(!confirm("Supprimer l'activité « "+a.name+" » et ses "+daysOf().length+" séance(s) ? C'est définitif, sur tous tes appareils.")) return;
+    const now = Date.now();
+    daysOf().forEach(day=>{ data.entries[cur+"/"+day] = {deleted:true, t:now}; });
+    data.acts[cur] = {deleted:true, t:now};
+    cur = liveActs()[0]; saveCur(); changed(); renderAll();
+  });
+  $("exp").addEventListener("click", exportData);
+  $("imp").addEventListener("click", ()=>$("impFile").click());
+  $("impFile").addEventListener("change", e=>{ const f=e.target.files[0]; if(f) importData(f); e.target.value=""; });
+  $("connect").addEventListener("click", async ()=>{
+    const tok = $("token").value.trim();
+    if(!tok){ setSync("err","Colle d'abord ton token GitHub."); $("token").focus(); return; }
+    cfg = {token:tok, gistId:""}; saveCfg(); $("token").value = "";
+    renderSyncBox(); await sync();
+    if(/Token refusé/.test($("syncTxt").textContent)){
+      cfg = {token:"", gistId:""}; saveCfg(); renderSyncBox();
+      setSync("err","Token refusé par GitHub. Vérifie qu'il est valide et a l'accès aux Gists.");
+    }
+  });
+  $("syncNow").addEventListener("click", sync);
+  $("disconnect").addEventListener("click", ()=>{ cfg = {token:"", gistId:""}; saveCfg(); renderSyncBox(); setSync("", "Cet appareil est déconnecté. Tes séances restent sur l'appareil et dans le gist."); });
+  document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible") sync(); });
+  window.addEventListener("online", sync);
+
+  // ---------- démarrage ----------
+  data = loadLocal(); cfg = loadCfg();
+  ensureActivity(); saveLocal();
+  renderAll(); renderSyncBox(); sync();
+})();
+</script>
+</body>
+</html>
