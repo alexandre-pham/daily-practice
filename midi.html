@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Enregistreur MIDI</title>
+<style>
+:root{
+  --bg:#F3F5F8; --surface:#FFFFFF; --ink:#1B2130; --muted:#5D6678; --line:#D9DEE6;
+  --key:#E6E9EF; --felt:#9E2238; --felt-soft:#F3DCE0; --ok:#2F6B4F;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){ --bg:#121620; --surface:#1A1F2B; --ink:#E8EBF1; --muted:#9AA3B5; --line:#2C3342; --key:#242B39; --felt:#E0566E; --felt-soft:#3A1F27; --ok:#6FC39A; }
+}
+:root[data-theme="dark"]{ --bg:#121620; --surface:#1A1F2B; --ink:#E8EBF1; --muted:#9AA3B5; --line:#2C3342; --key:#242B39; --felt:#E0566E; --felt-soft:#3A1F27; --ok:#6FC39A; }
+*,*::before,*::after{box-sizing:inherit}
+html{height:100%}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:640px;margin:0 auto;padding:28px 18px 48px}
+h1{font-family:Georgia,"Times New Roman",serif;font-size:2rem;line-height:1.1;margin:0}
+h2{font-family:Georgia,"Times New Roman",serif;font-weight:500;font-size:1.25rem;margin:0 0 12px}
+.lead{color:var(--muted);margin:6px 0 0}
+section{margin-top:24px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px}
+.status{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:.95rem}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--line);flex:none}
+.dot.ok{background:var(--ok)} .dot.err{background:var(--felt)}
+label{display:block;font-size:.92rem;color:var(--muted);margin:12px 0 4px}
+select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 10px;width:100%}
+button{font:inherit;cursor:pointer}
+.big{display:block;width:100%;margin-top:16px;border:0;border-radius:12px;padding:16px;font-size:1.1rem;font-weight:600;background:var(--ink);color:var(--bg)}
+.big.rec{background:var(--felt);color:#fff}
+.big:disabled{opacity:.4;cursor:default}
+.clock{font-family:Georgia,serif;font-size:3rem;font-weight:700;text-align:center;font-variant-numeric:tabular-nums;margin-top:14px}
+.meta{display:flex;justify-content:center;gap:18px;color:var(--muted);font-size:.92rem}
+.keys{display:flex;height:26px;margin-top:14px;border-radius:4px;overflow:hidden;border:1px solid var(--line)}
+.keys i{flex:1;background:var(--surface);border-right:1px solid var(--key)}
+.keys i.b{background:var(--key)}
+.keys i.on{background:var(--felt)}
+.takes{list-style:none;margin:0;padding:0}
+.takes li{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.takes li:last-child{border-bottom:0}
+.takes .small{color:var(--muted);font-size:.9rem}
+.dl{border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:8px;padding:8px 12px;text-decoration:none;font-size:.95rem}
+.empty{color:var(--muted)}
+.warn{background:var(--felt-soft);border-radius:10px;padding:10px 12px;margin-top:12px}
+.warn[hidden]{display:none}
+:focus-visible{outline:2px solid var(--felt);outline-offset:2px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Enregistreur MIDI</h1>
+  <p class="lead">Enregistre ce que tu joues sur le piano et télécharge-le en fichier <code>.mid</code>. Fonctionne dans Chrome ou Brave sur ordinateur, piano branché en USB.</p>
+
+  <section class="card">
+    <div class="status"><span class="dot" id="dot"></span><span id="statusTxt">Connexion au MIDI…</span></div>
+    <div class="warn" id="warn" hidden></div>
+    <label for="input">Clavier</label>
+    <select id="input" disabled></select>
+
+    <div class="clock" id="clock">0:00</div>
+    <div class="meta"><span id="notes">0 note</span><span id="pedal">Pédale : —</span></div>
+    <div class="keys" id="keys" aria-hidden="true"></div>
+
+    <button class="big" id="recBtn" disabled>Démarrer l'enregistrement</button>
+  </section>
+
+  <section>
+    <h2>Prises</h2>
+    <ul class="takes" id="takes"><li class="empty">Aucune prise pour l'instant.</li></ul>
+    <p class="lead" style="font-size:.9rem">Les prises restent dans cette page tant qu'elle est ouverte. Télécharge celles que tu veux garder.</p>
+  </section>
+</main>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  let access = null, input = null, recording = false, t0 = 0, events = [], tick = null, takeN = 0;
+  const held = new Set();
+  const PPQ = 480, TEMPO_US = 500000; // 120 BPM : 1 noire = 500 ms
+
+  // petit clavier visuel (88 touches)
+  const keysBox = $("keys");
+  for(let n=21;n<=108;n++){ const i=document.createElement("i"); if([1,3,6,8,10].includes(n%12)) i.className="b"; i.dataset.n=n; keysBox.appendChild(i); }
+  function showKey(n,on){ const k=keysBox.children[n-21]; if(k) k.classList.toggle("on",on); }
+
+  function setStatus(state,msg){ $("dot").className="dot "+(state||""); $("statusTxt").textContent=msg; }
+  function warn(msg){ $("warn").hidden=!msg; $("warn").textContent=msg||""; }
+
+  function fill(){
+    const sel=$("input"), prev=sel.value; sel.textContent="";
+    const list=[...access.inputs.values()];
+    list.forEach(p=>{ const o=document.createElement("option"); o.value=p.id; o.textContent=p.name+(p.manufacturer?" ("+p.manufacturer+")":""); sel.appendChild(o); });
+    if(!list.length){
+      sel.disabled=true; $("recBtn").disabled=!recording;
+      setStatus("err","Aucun clavier détecté. Vérifie le câble USB et que le Bluetooth MIDI du piano est désactivé.");
+      bind(null); return;
+    }
+    sel.disabled=false; $("recBtn").disabled=false;
+    const kawai=list.find(p=>/kawai|usb midi|ca/i.test(p.name));
+    sel.value = list.some(p=>p.id===prev) ? prev : (kawai||list[0]).id;
+    bind(access.inputs.get(sel.value));
+  }
+  function bind(p){
+    if(input) input.onmidimessage=null;
+    input=p;
+    if(p){ p.onmidimessage=onMsg; setStatus("ok","Connecté : "+p.name+". Joue une note pour tester."); }
+  }
+  function onMsg(e){
+    const d=e.data; if(!d || !d.length) return;
+    const st=d[0]&0xF0;
+    if(st===0x90 && d[2]>0){ held.add(d[1]); showKey(d[1],true); }
+    else if(st===0x80 || (st===0x90 && d[2]===0)){ held.delete(d[1]); showKey(d[1],false); }
+    else if(st===0xB0 && d[1]===64){ $("pedal").textContent="Pédale : "+(d[2]>=64?"enfoncée":"relâchée"); }
+    if(!recording) return;
+    if(st===0x90||st===0x80||st===0xB0||st===0xC0||st===0xE0||st===0xA0||st===0xD0){
+      events.push({t:e.timeStamp, d:Array.from(d.slice(0, st===0xC0||st===0xD0 ? 2 : 3))});
+      if(st===0x90 && d[2]>0){ const n=events.filter(x=>(x.d[0]&0xF0)===0x90 && x.d[2]>0).length; $("notes").textContent=n+(n>1?" notes":" note"); }
+    }
+  }
+
+  // ---------- fichier MIDI (format 0) ----------
+  function vlq(n){ const b=[n&0x7F]; n>>=7; while(n>0){ b.unshift((n&0x7F)|0x80); n>>=7; } return b; }
+  function buildSMF(evs){
+    const first = evs.length ? evs[0].t : 0;
+    const start = Math.max(0, first-200);
+    const trk=[];
+    trk.push(0x00,0xFF,0x51,0x03,(TEMPO_US>>16)&255,(TEMPO_US>>8)&255,TEMPO_US&255);
+    trk.push(0x00,0xFF,0x58,0x04,4,2,24,8);
+    let last=0;
+    evs.forEach(ev=>{
+      const ticks=Math.max(0, Math.round((ev.t-start)*PPQ/(TEMPO_US/1000)));
+      trk.push(...vlq(Math.max(0,ticks-last)), ...ev.d); last=Math.max(last,ticks);
+    });
+    trk.push(0x00,0xFF,0x2F,0x00);
+    const len=trk.length;
+    const head=[0x4D,0x54,0x68,0x64,0,0,0,6,0,0,0,1,(PPQ>>8)&255,PPQ&255];
+    const th=[0x4D,0x54,0x72,0x6B,(len>>>24)&255,(len>>>16)&255,(len>>>8)&255,len&255];
+    return new Uint8Array([...head,...th,...trk]);
+  }
+  function fmt(ms){ const s=Math.floor(ms/1000); return Math.floor(s/60)+":"+String(s%60).padStart(2,"0"); }
+
+  function start(){
+    events=[]; recording=true; t0=performance.now();
+    $("recBtn").textContent="Arrêter l'enregistrement"; $("recBtn").classList.add("rec");
+    $("notes").textContent="0 note";
+    tick=setInterval(()=>{ $("clock").textContent=fmt(performance.now()-t0); }, 250);
+  }
+  function stop(){
+    recording=false; clearInterval(tick);
+    $("recBtn").textContent="Démarrer l'enregistrement"; $("recBtn").classList.remove("rec");
+    const evs=events.slice(); events=[];
+    // fermer les notes encore tenues
+    const end=performance.now();
+    held.forEach(n=>evs.push({t:end, d:[0x80,n,0]}));
+    const notes=evs.filter(x=>(x.d[0]&0xF0)===0x90 && x.d[2]>0).length;
+    if(!notes){ warn("Aucune note reçue pendant l'enregistrement. Vérifie que le bon clavier est sélectionné."); return; }
+    warn("");
+    evs.sort((a,b)=>a.t-b.t);
+    const blob=new Blob([buildSMF(evs)],{type:"audio/midi"});
+    addTake(blob, notes, evs[evs.length-1].t-evs[0].t);
+  }
+  function addTake(blob, notes, durMs){
+    takeN++;
+    const ul=$("takes"); if(ul.querySelector(".empty")) ul.textContent="";
+    const d=new Date();
+    const name="piano-"+d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")+"-"+String(d.getHours()).padStart(2,"0")+"h"+String(d.getMinutes()).padStart(2,"0")+".mid";
+    const li=document.createElement("li");
+    const info=document.createElement("div");
+    const b=document.createElement("b"); b.textContent="Prise "+takeN;
+    const s=document.createElement("div"); s.className="small"; s.textContent=fmt(durMs)+" · "+notes+" notes";
+    info.append(b,s);
+    const a=document.createElement("a"); a.className="dl"; a.href=URL.createObjectURL(blob); a.download=name; a.textContent="Télécharger .mid";
+    li.append(info,a); ul.prepend(li);
+  }
+
+  $("recBtn").addEventListener("click", ()=>{ recording ? stop() : start(); });
+  $("input").addEventListener("change", e=>bind(access.inputs.get(e.target.value)));
+  window.addEventListener("beforeunload", e=>{ if(recording){ e.preventDefault(); e.returnValue=""; } });
+
+  if(!navigator.requestMIDIAccess){
+    setStatus("err","Ce navigateur ne gère pas le MIDI. Ouvre cette page dans Chrome ou Brave sur ton Mac (Safari ne le gère pas).");
+  } else {
+    navigator.requestMIDIAccess({sysex:false}).then(a=>{
+      access=a; fill(); a.onstatechange=fill;
+    }).catch(()=>{
+      setStatus("err","Accès au MIDI refusé. Autorise « Appareils MIDI » pour ce site dans les réglages du navigateur, puis recharge la page.");
+    });
+  }
+})();
+</script>
+</body>
+</html>
