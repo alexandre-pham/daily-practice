@@ -18,7 +18,7 @@ import {
   payload,
   ensureActivity,
 } from "./store.js";
-import { sync, initSync, connect, disconnect } from "./sync.js";
+import { sync, initSync, connect, unlock, disconnect, hasLegacyToken, PASS_MIN } from "./sync.js";
 import { startMidi, stopMidi, startAudio, stopAudio, recInfo, refreshMessage } from "./recorder.js";
 import { metro, startSession, stopSession, cancelSession, togglePause, keepAwake, noteBpm } from "./session.js";
 import { BPM_MIN, BPM_MAX } from "./metronome.js";
@@ -381,14 +381,38 @@ $("impFile").addEventListener("change", (e) => {
 // ---------- sync ----------
 $("connectBox").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const token = $("token").value.trim();
+  const token = $("token").value.trim(),
+    pass = $("pass").value;
   if (!token) {
     toast(t("pasteToken"));
     $("token").focus();
     return;
   }
+  if (pass.length < PASS_MIN) {
+    toast(t("passShort", PASS_MIN));
+    $("pass").focus();
+    return;
+  }
   $("token").value = "";
-  await connect(token);
+  $("pass").value = "";
+  await connect(token, pass);
+  renderSync();
+});
+$("unlockBox").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const pass = $("unlockPass").value;
+  if (!pass) {
+    toast(t("needPass"));
+    $("unlockPass").focus();
+    return;
+  }
+  if (hasLegacyToken() && pass.length < PASS_MIN) {
+    toast(t("passShort", PASS_MIN));
+    $("unlockPass").focus();
+    return;
+  }
+  $("unlockPass").value = "";
+  await unlock(pass);
   renderSync();
 });
 $("syncNow").addEventListener("click", sync);
