@@ -4,20 +4,54 @@ import { readJSON, writeJSON } from "./util.js";
 import { emit, on } from "./bus.js";
 import { state, normalize, merge, canon, payload, setData } from "./store.js";
 import { fmt } from "./i18n.js";
-import { KDF_ITER, newSalt, deriveKey, encrypt, decrypt } from "./crypto.js";
+import { KDF_ITER, b64, unb64, newSalt, deriveRaw, importKey, encrypt, decrypt } from "./crypto.js";
 
 const API = "https://api.github.com";
 const FILE = "suivi-piano.json";
 const LS_CFG = "suivi-piano-gist";
 const PUSH_DELAY_MS = 2500;
 export const PASS_MIN = 10;
+const SS_UNLOCK = "suivi-piano-unlock";
+const UNLOCK_TTL_MS = 12 * 3600 * 1000;
 
 // Stored: {gistId, salt, tokenBox: {iv, ct}, oldGistId?}. Older versions stored a plaintext `token`.
 const cfg = Object.assign({ gistId: "", salt: "", tokenBox: null }, readJSON(LS_CFG, {}));
 const saveCfg = () => writeJSON(LS_CFG, cfg);
 
-// Unlocked secrets, kept in memory only: {token, pass, key, salt}.
+// Unlocked secrets: {token, pass, key, raw, salt, at}. `pass` is null when resumed after a reload.
 let session = null;
+
+// The derived key (never the passphrase) is kept in sessionStorage: per tab, survives reloads, gone on tab close.
+function remember() {
+  try {
+    sessionStorage.setItem(SS_UNLOCK, JSON.stringify({ salt: session.salt, key: b64(session.raw), at: session.at }));
+  } catch {
+    /* unavailable: the passphrase is asked on each load */
+  }
+}
+function forget() {
+  try {
+    sessionStorage.removeItem(SS_UNLOCK);
+  } catch {
+    /* ignore */
+  }
+}
+async function resume() {
+  let s = null;
+  try {
+    s = JSON.parse(sessionStorage.getItem(SS_UNLOCK));
+  } catch {
+    /* ignore */
+  }
+  if (!s || !cfg.tokenBox || s.salt !== cfg.salt || !(Date.now() - s.at < UNLOCK_TTL_MS)) return forget();
+  try {
+    const raw = unb64(s.key),
+      key = await importKey(raw);
+    session = { token: await decrypt(key, cfg.tokenBox), pass: null, key, raw, salt: s.salt, at: s.at };
+  } catch {
+    forget();
+  }
+}
 
 export const isConnected = () => !!(cfg.tokenBox || cfg.token);
 export const isLocked = () => isConnected() && !session;
@@ -35,7 +69,9 @@ function setStatus(st, key, ...args) {
 /** Key for a given salt, re-derived from the passphrase when another device changed the salt. */
 async function keyFor(salt, iter = KDF_ITER) {
   if (session.key && session.salt === salt) return session.key;
-  session.key = await deriveKey(session.pass, salt, iter);
+  if (!session.pass) throw { kind: "relock" }; // resumed session: a new salt needs the passphrase
+  session.raw = await deriveRaw(session.pass, salt, iter);
+  session.key = await importKey(session.raw);
   session.salt = salt;
   return session.key;
 }
@@ -119,9 +155,10 @@ async function readGist() {
     return { data: normalize(obj), encrypted: false, legacy: alone };
   }
   if (!Number.isInteger(obj.iter) || obj.iter < KDF_ITER || obj.iter > 10 * KDF_ITER) throw { kind: "pass" };
+  const key = await keyFor(obj.salt, obj.iter);
   let plain;
   try {
-    plain = await decrypt(await keyFor(obj.salt, obj.iter), obj);
+    plain = await decrypt(key, obj);
   } catch {
     throw { kind: "pass" };
   }
@@ -160,9 +197,11 @@ async function doSync() {
     }
     if (!cfg.tokenBox || cfg.salt !== session.salt) await saveToken();
     if (cfg.oldGistId) await dropOldGist();
+    remember();
     setStatus("ok", "syncOk", fmt.time.format(new Date()));
   } catch (e) {
-    if (e && e.kind === "token") setStatus("err", "errToken");
+    if (e && e.kind === "relock") lock();
+    else if (e && e.kind === "token") setStatus("err", "errToken");
     else if (e && e.kind === "pass") setStatus("err", "errPass");
     else if (e && e.kind === "oldgist") setStatus("err", "errOldGist");
     else if (e && e.kind === "limit") setStatus("err", "errLimit");
@@ -188,18 +227,20 @@ on("changed", () => {
 /** Connect with a new token, or migrate a legacy plaintext token. Returns true on success. */
 export async function connect(token, pass) {
   const legacy = !!cfg.token;
-  session = { token, pass, key: null, salt: "" };
+  session = { token, pass, key: null, raw: null, salt: "", at: Date.now() };
   if (!legacy) Object.assign(cfg, { gistId: "", salt: "", tokenBox: null });
   await sync();
   if (status.key === "errToken" || status.key === "errPass") {
     const key = status.key === "errToken" ? "tokenRefused" : "errPass";
     session = null;
+    forget();
     if (!legacy) Object.assign(cfg, { gistId: "", salt: "", tokenBox: null });
     saveCfg();
     setStatus("err", key);
     return false;
   }
   if (!cfg.tokenBox) await saveToken(); // e.g. offline: keep the token, encrypted, for the next sync
+  remember();
   return true;
 }
 
@@ -207,18 +248,28 @@ export async function connect(token, pass) {
 export async function unlock(pass) {
   if (cfg.token) return connect(cfg.token, pass);
   try {
-    const key = await deriveKey(pass, cfg.salt);
-    session = { token: await decrypt(key, cfg.tokenBox), pass, key, salt: cfg.salt };
+    const raw = await deriveRaw(pass, cfg.salt),
+      key = await importKey(raw);
+    session = { token: await decrypt(key, cfg.tokenBox), pass, key, raw, salt: cfg.salt, at: Date.now() };
   } catch {
     setStatus("err", "errPass");
     return false;
   }
+  remember();
   await sync();
   return true;
 }
 
+/** Forget the unlocked secrets in this tab; the passphrase is needed again. */
+export function lock() {
+  session = null;
+  forget();
+  setStatus("busy", "locked");
+}
+
 export function disconnect() {
   session = null;
+  forget();
   Object.assign(cfg, { gistId: "", salt: "", tokenBox: null });
   delete cfg.token;
   delete cfg.oldGistId;
@@ -226,8 +277,10 @@ export function disconnect() {
   setStatus("", "disconnected");
 }
 
-export function initSync() {
-  if (!isConnected()) setStatus("", "notConnected");
-  else setStatus("busy", cfg.token ? "setPass" : "locked");
+export async function initSync() {
   window.addEventListener("online", sync);
+  if (!isConnected()) return setStatus("", "notConnected");
+  await resume();
+  if (session) return sync();
+  setStatus("busy", cfg.token ? "setPass" : "locked");
 }

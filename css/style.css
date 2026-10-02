@@ -84,6 +84,12 @@ select {
   font: inherit;
   color: inherit;
 }
+/* iOS Safari zooms into any field under 16px on focus */
+input,
+textarea,
+select {
+  font-size: max(16px, 1em);
+}
 button {
   cursor: pointer;
 }
