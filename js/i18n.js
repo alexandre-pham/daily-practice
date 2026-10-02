@@ -135,7 +135,7 @@ export const I18N = {
     connect: "Connecter",
     tokenL: "Token GitHub",
     tokenHelp:
-      "Colle un token GitHub ayant uniquement l'accès aux Gists. Tes séances seront stockées dans un gist secret suivi-piano.json, partagé entre tes appareils.",
+      "Colle un token GitHub ayant uniquement l'accès aux Gists. Tes séances seront stockées chiffrées dans un gist secret suivi-piano.json, partagé entre tes appareils.",
     backup: "Sauvegarde",
     backupHelp: "Les enregistrements MIDI et audio restent sur l'appareil où ils ont été faits.",
     exp: "Exporter mes données",
@@ -158,6 +158,18 @@ export const I18N = {
     errSync: "La synchronisation a échoué. Tes séances sont gardées sur cet appareil. Réessaie avec « Synchroniser maintenant ».",
     notConnected: "Non connecté : tes séances restent sur cet appareil.",
     pasteToken: "Colle d'abord ton token GitHub.",
+    passL: "Phrase secrète",
+    errOldGist:
+      "Données chiffrées dans un nouveau gist, mais l'ancien gist non chiffré n'a pas pu être supprimé. Nouvel essai à la prochaine synchronisation ; tu peux aussi le supprimer sur GitHub.",
+    passHelp:
+      "Choisis une phrase secrète : elle chiffre ton token sur cet appareil et tes données dans le gist. Utilise la même sur tous tes appareils. Elle ne peut pas être récupérée.",
+    passShort: (n) => "La phrase secrète doit faire au moins " + n + " caractères.",
+    needPass: "Saisis ta phrase secrète.",
+    unlock: "Déverrouiller",
+    locked: "Verrouillé : saisis ta phrase secrète pour synchroniser.",
+    setPass: "Choisis une phrase secrète pour chiffrer ton token et tes données, puis la synchronisation reprendra.",
+    errPass:
+      "Phrase secrète incorrecte. Si le gist a été chiffré avec une autre phrase, saisis celle-ci (ou supprime le gist sur GitHub pour repartir de tes données locales).",
     tokenRefused: "Token refusé par GitHub. Vérifie qu'il est valide et a l'accès aux Gists.",
     disconnected: "Cet appareil est déconnecté. Tes séances restent sur l'appareil et dans le gist.",
     imported: (n) => n + " séance(s) importée(s).",
@@ -305,7 +317,7 @@ export const I18N = {
     connect: "Connect",
     tokenL: "GitHub token",
     tokenHelp:
-      "Paste a GitHub token with access to Gists only. Your sessions will be stored in a secret gist, suivi-piano.json, shared across your devices.",
+      "Paste a GitHub token with access to Gists only. Your sessions will be stored encrypted in a secret gist, suivi-piano.json, shared across your devices.",
     backup: "Backup",
     backupHelp: "MIDI and audio recordings stay on the device where they were made.",
     exp: "Export my data",
@@ -328,6 +340,18 @@ export const I18N = {
     errSync: "Sync failed. Your sessions are kept on this device. Try again with “Sync now”.",
     notConnected: "Not connected: your sessions stay on this device.",
     pasteToken: "Paste your GitHub token first.",
+    passL: "Passphrase",
+    errOldGist:
+      "Data is encrypted in a new gist, but the old unencrypted gist couldn't be deleted. It will retry on the next sync; you can also delete it on GitHub.",
+    passHelp:
+      "Choose a passphrase: it encrypts your token on this device and your data in the gist. Use the same one on all your devices. It cannot be recovered.",
+    passShort: (n) => "The passphrase must be at least " + n + " characters.",
+    needPass: "Enter your passphrase.",
+    unlock: "Unlock",
+    locked: "Locked: enter your passphrase to sync.",
+    setPass: "Choose a passphrase to encrypt your token and data, then sync will resume.",
+    errPass:
+      "Wrong passphrase. If the gist was encrypted with another passphrase, enter that one (or delete the gist on GitHub to start over from your local data).",
     tokenRefused: "GitHub rejected the token. Check that it's valid and has Gists access.",
     disconnected: "This device is disconnected. Your sessions stay on the device and in the gist.",
     imported: (n) => n + " session(s) imported.",

@@ -19,7 +19,7 @@ import {
 import { activeMs, pausedMs, metro } from "../session.js";
 import { MIDI_OK, recInfo, message as recMessage } from "../recorder.js";
 import { getClip, extOf } from "../clips.js";
-import { status as syncStatus, isConnected, gistUrl } from "../sync.js";
+import { status as syncStatus, isConnected, isLocked, gistUrl } from "../sync.js";
 import { lockScroll } from "./dialogs.js";
 
 let actions = {};
@@ -27,10 +27,32 @@ export const setActions = (a) => {
   actions = a;
 };
 
-const ICON_EDIT =
-  '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
-const ICON_DEL =
-  '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>';
+const ICON_EDIT = ["M12 20h9", "M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"];
+const ICON_DEL = ["M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"];
+
+// Built with DOM calls, not innerHTML, so the CSP can enforce Trusted Types.
+function icon(paths) {
+  const NS = "http://www.w3.org/2000/svg",
+    svg = document.createElementNS(NS, "svg");
+  const attrs = {
+    width: 17,
+    height: 17,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    "stroke-width": 2,
+    "stroke-linecap": "round",
+    "stroke-linejoin": "round",
+    "aria-hidden": "true",
+  };
+  for (const k in attrs) svg.setAttribute(k, attrs[k]);
+  paths.forEach((d) => {
+    const p = document.createElementNS(NS, "path");
+    p.setAttribute("d", d);
+    svg.appendChild(p);
+  });
+  return svg;
+}
 
 // Object URLs for recordings currently on screen; revoked on each full render.
 const urls = [];
@@ -48,10 +70,27 @@ export function renderAll() {
 }
 
 // ---------- header & activity menu ----------
+// Tab icon: the current activity's initial on the app tile.
+const XML_ESC = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" };
+let faviconFor = null;
+function setFavicon(name) {
+  const ch = (Array.from(name.trim())[0] || "?").toUpperCase();
+  if (ch === faviconFor) return;
+  faviconFor = ch;
+  const svg =
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#1B2130"/>' +
+    '<rect x="14" y="50" width="36" height="5" rx="2" fill="#C8324D"/><text x="32" y="43" text-anchor="middle" ' +
+    'font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif" font-size="38" font-weight="700" fill="#fff">' +
+    ch.replace(/[&<>"']/g, (c) => XML_ESC[c]) +
+    "</text></svg>";
+  $("favicon").href = "data:image/svg+xml," + encodeURIComponent(svg);
+}
+
 function renderHeader() {
   const a = act();
   $("title").textContent = t("title", a.name);
   document.title = t("title", a.name);
+  setFavicon(a.name);
   const menu = $("actMenu");
   menu.textContent = "";
   liveActs().forEach((id) => {
@@ -164,11 +203,11 @@ function renderDay() {
     if (s.clips && s.clips.length) sub.push(clipSummary(s.clips));
     txt.append(el("div", "lbl", sessLabel(s)), el("div", "sub", sub.join(" · ") || "—"));
     const ed = el("button", "ghosticon");
-    ed.innerHTML = ICON_EDIT;
+    ed.appendChild(icon(ICON_EDIT));
     ed.setAttribute("aria-label", t("edit"));
     ed.addEventListener("click", () => actions.editSession(s));
     const del = el("button", "ghosticon del");
-    del.innerHTML = ICON_DEL;
+    del.appendChild(icon(ICON_DEL));
     del.setAttribute("aria-label", t("del"));
     del.addEventListener("click", () => actions.deleteSession(s));
     row.append(txt, ed, del);
@@ -428,9 +467,12 @@ export function renderSheet() {
 
 export function renderSync() {
   const on = isConnected(),
+    locked = isLocked(),
     st = syncStatus;
   $("connectBox").classList.toggle("hide", on);
+  $("unlockBox").classList.toggle("hide", !locked);
   $("connectedBox").classList.toggle("hide", !on);
+  $("syncNow").classList.toggle("hide", locked);
   ["dot", "hdrDot"].forEach((id) => {
     $(id).className = "sdot " + (st.state || "");
   });

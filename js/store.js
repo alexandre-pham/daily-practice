@@ -24,26 +24,85 @@ export const state = {
   focusOpen: false,
 };
 
+// ---------- validation ----------
+// Data from imports and the gist is untrusted: keep only known fields with the expected types.
+const ID_RE = /^[\w-]{1,64}$/;
+const BAD_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+const isId = (s) => typeof s === "string" && ID_RE.test(s) && !BAD_KEYS.has(s);
+const num = (v, lo, hi) => (typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : undefined);
+const str = (v, max) => (typeof v === "string" ? v.slice(0, max) : undefined);
+const T_MAX = 8.64e15; // largest valid Date
+
+/** Copy defined values only, so JSON output stays unchanged for well-formed records. */
+function pick(o) {
+  const r = {};
+  for (const k in o) if (o[k] !== undefined) r[k] = o[k];
+  return r;
+}
+
+function cleanAct(v) {
+  if (!v || typeof v !== "object") return null;
+  const t = num(v.t, 0, T_MAX) || 0;
+  if (v.deleted) return { deleted: true, t };
+  const name = str(v.name, 40);
+  if (!name) return null;
+  return pick({ name, goal: Math.round(num(v.goal, 5, 3000) || 210), t, created: num(v.created, 0, T_MAX) });
+}
+
+function cleanClip(c) {
+  if (!c || typeof c !== "object" || !isId(c.id)) return null;
+  return pick({
+    id: c.id,
+    at: num(c.at, 0, T_MAX),
+    dur: num(c.dur, 0, 1e6),
+    mime: str(c.mime, 100),
+    notes: num(c.notes, 0, 1e7),
+  });
+}
+
+function cleanEntry(v) {
+  if (!v || typeof v !== "object") return null;
+  const t = num(v.t, 0, T_MAX) || 0;
+  if (v.deleted) return { deleted: true, t };
+  const min = num(v.min, 0, 1440);
+  if (min === undefined) return null;
+  const clips = Array.isArray(v.clips) ? v.clips.map(cleanClip).filter(Boolean) : [];
+  return pick({
+    min,
+    note: str(v.note, 500),
+    start: num(v.start, 0, T_MAX),
+    end: num(v.end, 0, T_MAX),
+    pause: num(v.pause, 0, 1e5),
+    bpm: num(v.bpm, 1, 1000),
+    clips: clips.length ? clips : undefined,
+    t,
+  });
+}
+
 // ---------- normalisation & migration ----------
 export function normalize(obj) {
   const out = { acts: {}, entries: {} };
   if (!obj || typeof obj !== "object") return out;
-  if (obj.acts && obj.entries) {
-    for (const id in obj.acts) if (obj.acts[id] && typeof obj.acts[id] === "object") out.acts[id] = obj.acts[id];
-    for (const k in obj.entries) {
-      const v = obj.entries[k];
-      if (!v || typeof v !== "object") continue;
+  if (obj.acts && obj.entries && typeof obj.acts === "object" && typeof obj.entries === "object") {
+    for (const id of Object.keys(obj.acts)) {
+      const a = isId(id) && cleanAct(obj.acts[id]);
+      if (a) out.acts[id] = a;
+    }
+    for (const k of Object.keys(obj.entries)) {
+      const v = cleanEntry(obj.entries[k]);
+      if (!v) continue;
       const p = k.split("/");
-      if (p.length === 3 && p[0] && DATE_RE.test(p[1]) && p[2]) out.entries[k] = v;
-      else if (p.length === 2 && p[0] && DATE_RE.test(p[1])) out.entries[k + "/jour"] = v; // v3: one session per day
+      if (p.length === 3 && isId(p[0]) && DATE_RE.test(p[1]) && isId(p[2])) out.entries[k] = v;
+      else if (p.length === 2 && isId(p[0]) && DATE_RE.test(p[1])) out.entries[k + "/jour"] = v; // v3: one session per day
     }
     return out;
   }
   const old = obj.entries && typeof obj.entries === "object" ? obj.entries : obj; // v1/v2: piano only
   let any = false;
-  for (const k in old) {
-    if (DATE_RE.test(k) && old[k]) {
-      out.entries["piano/" + k + "/jour"] = Object.assign({ t: 0 }, old[k]);
+  for (const k of Object.keys(old)) {
+    const v = DATE_RE.test(k) && cleanEntry(Object.assign({ t: 0 }, old[k]));
+    if (v) {
+      out.entries["piano/" + k + "/jour"] = v;
       any = true;
     }
   }
