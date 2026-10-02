@@ -166,6 +166,7 @@ export const I18N = {
     passShort: (n) => "La phrase secrète doit faire au moins " + n + " caractères.",
     needPass: "Saisis ta phrase secrète.",
     unlock: "Déverrouiller",
+    lockNow: "Verrouiller",
     locked: "Verrouillé : saisis ta phrase secrète pour synchroniser.",
     setPass: "Choisis une phrase secrète pour chiffrer ton token et tes données, puis la synchronisation reprendra.",
     errPass:
@@ -348,6 +349,7 @@ export const I18N = {
     passShort: (n) => "The passphrase must be at least " + n + " characters.",
     needPass: "Enter your passphrase.",
     unlock: "Unlock",
+    lockNow: "Lock",
     locked: "Locked: enter your passphrase to sync.",
     setPass: "Choose a passphrase to encrypt your token and data, then sync will resume.",
     errPass:

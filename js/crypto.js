@@ -4,27 +4,24 @@ export const KDF_ITER = 600000;
 const enc = new TextEncoder(),
   dec = new TextDecoder();
 
-function b64(buf) {
+export function b64(buf) {
   const u = new Uint8Array(buf);
   let s = "";
   for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode(...u.subarray(i, i + 0x8000)); // chunked: large gists overflow the stack
   return btoa(s);
 }
-const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+export const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
 
 export const newSalt = () => b64(crypto.getRandomValues(new Uint8Array(16)));
 
-/** Derive a non-extractable AES key from a passphrase and a base64 salt. */
-export async function deriveKey(passphrase, salt, iter = KDF_ITER) {
-  const base = await crypto.subtle.importKey("raw", enc.encode(passphrase), "PBKDF2", false, ["deriveKey"]);
-  return crypto.subtle.deriveKey(
-    { name: "PBKDF2", hash: "SHA-256", salt: unb64(salt), iterations: iter },
-    base,
-    { name: "AES-GCM", length: 256 },
-    false,
-    ["encrypt", "decrypt"],
-  );
+/** Raw 256-bit key from a passphrase and a base64 salt (kept so the tab can stay unlocked across reloads). */
+export async function deriveRaw(passphrase, salt, iter = KDF_ITER) {
+  const base = await crypto.subtle.importKey("raw", enc.encode(passphrase), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: unb64(salt), iterations: iter }, base, 256);
+  return new Uint8Array(bits);
 }
+
+export const importKey = (raw) => crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["encrypt", "decrypt"]);
 
 export async function encrypt(key, text) {
   const iv = crypto.getRandomValues(new Uint8Array(12));

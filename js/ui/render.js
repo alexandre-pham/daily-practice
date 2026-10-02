@@ -473,6 +473,7 @@ export function renderSync() {
   $("unlockBox").classList.toggle("hide", !locked);
   $("connectedBox").classList.toggle("hide", !on);
   $("syncNow").classList.toggle("hide", locked);
+  $("lockNow").classList.toggle("hide", locked);
   ["dot", "hdrDot"].forEach((id) => {
     $(id).className = "sdot " + (st.state || "");
   });

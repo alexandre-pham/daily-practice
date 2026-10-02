@@ -18,7 +18,7 @@ import {
   payload,
   ensureActivity,
 } from "./store.js";
-import { sync, initSync, connect, unlock, disconnect, hasLegacyToken, PASS_MIN } from "./sync.js";
+import { sync, initSync, connect, unlock, lock, disconnect, hasLegacyToken, PASS_MIN } from "./sync.js";
 import { startMidi, stopMidi, startAudio, stopAudio, recInfo, refreshMessage } from "./recorder.js";
 import { metro, startSession, stopSession, cancelSession, togglePause, keepAwake, noteBpm } from "./session.js";
 import { BPM_MIN, BPM_MAX } from "./metronome.js";
@@ -416,6 +416,10 @@ $("unlockBox").addEventListener("submit", async (e) => {
   renderSync();
 });
 $("syncNow").addEventListener("click", sync);
+$("lockNow").addEventListener("click", () => {
+  lock();
+  renderSync();
+});
 $("disconnect").addEventListener("click", () => {
   disconnect();
   renderSync();
