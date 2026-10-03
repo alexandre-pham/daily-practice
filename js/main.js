@@ -18,7 +18,18 @@ import {
   payload,
   ensureActivity,
 } from "./store.js";
-import { sync, initSync, connect, unlock, lock, disconnect, hasLegacyToken, PASS_MIN } from "./sync.js";
+import {
+  sync,
+  initSync,
+  connect,
+  unlock,
+  lock,
+  disconnect,
+  isLocked,
+  hasLegacyToken,
+  PASS_MIN,
+  status as syncStatus,
+} from "./sync.js";
 import { startMidi, stopMidi, startAudio, stopAudio, recInfo, refreshMessage } from "./recorder.js";
 import { metro, startSession, stopSession, cancelSession, togglePause, keepAwake, noteBpm } from "./session.js";
 import { BPM_MIN, BPM_MAX } from "./metronome.js";
@@ -33,6 +44,9 @@ import {
   initDialogs,
   closeTopOverlay,
   isOpen,
+  openUnlock,
+  closeUnlock,
+  showUnlockError,
 } from "./ui/dialogs.js";
 import {
   setActions,
@@ -398,22 +412,46 @@ $("connectBox").addEventListener("submit", async (e) => {
   await connect(token, pass);
   renderSync();
 });
+/** Validation message for an unlock passphrase, or "" when it can be tried. */
+function unlockPassError(pass) {
+  if (!pass) return t("needPass");
+  if (hasLegacyToken() && pass.length < PASS_MIN) return t("passShort", PASS_MIN); // first passphrase: being chosen now
+  return "";
+}
 $("unlockBox").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const pass = $("unlockPass").value;
-  if (!pass) {
-    toast(t("needPass"));
-    $("unlockPass").focus();
-    return;
-  }
-  if (hasLegacyToken() && pass.length < PASS_MIN) {
-    toast(t("passShort", PASS_MIN));
+  const pass = $("unlockPass").value,
+    err = unlockPassError(pass);
+  if (err) {
+    toast(err);
     $("unlockPass").focus();
     return;
   }
   $("unlockPass").value = "";
   await unlock(pass);
   renderSync();
+});
+$("unlockForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const pass = $("ulPass").value,
+    err = unlockPassError(pass);
+  if (err) {
+    showUnlockError(err);
+    $("ulPass").focus();
+    return;
+  }
+  $("ulOk").disabled = true;
+  showUnlockError("");
+  const ok = await unlock(pass);
+  $("ulOk").disabled = false;
+  renderSync();
+  if (!ok) {
+    showUnlockError(t(syncStatus.key, ...syncStatus.args));
+    $("ulPass").select();
+    return;
+  }
+  closeUnlock();
+  toast(t("unlocked"));
 });
 $("syncNow").addEventListener("click", sync);
 $("lockNow").addEventListener("click", () => {
@@ -470,5 +508,7 @@ initDialogs();
 load();
 applyStatic();
 renderAll();
-initSync();
+initSync().then(() => {
+  if (isLocked()) openUnlock(t(hasLegacyToken() ? "setPass" : "locked"));
+});
 if (state.run) keepAwake();

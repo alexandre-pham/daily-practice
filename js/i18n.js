@@ -167,6 +167,9 @@ export const I18N = {
     needPass: "Saisis ta phrase secrète.",
     unlock: "Déverrouiller",
     lockNow: "Verrouiller",
+    unlockT: "Déverrouiller la synchronisation",
+    later: "Plus tard",
+    unlocked: "Synchronisation déverrouillée.",
     locked: "Verrouillé : saisis ta phrase secrète pour synchroniser.",
     setPass: "Choisis une phrase secrète pour chiffrer ton token et tes données, puis la synchronisation reprendra.",
     errPass:
@@ -350,6 +353,9 @@ export const I18N = {
     needPass: "Enter your passphrase.",
     unlock: "Unlock",
     lockNow: "Lock",
+    unlockT: "Unlock sync",
+    later: "Not now",
+    unlocked: "Sync unlocked.",
     locked: "Locked: enter your passphrase to sync.",
     setPass: "Choose a passphrase to encrypt your token and data, then sync will resume.",
     errPass:

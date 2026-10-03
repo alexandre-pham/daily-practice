@@ -360,6 +360,55 @@ export function flashBeat({ beat }) {
 }
 
 // ---------- statistics ----------
+// ---------- chart tooltip (hover with a mouse, touch or slide on a phone) ----------
+let chartVals = [],
+  chartTipsReady = false;
+
+function showChartTip(clientX) {
+  const chart = $("chart"),
+    bars = chart.querySelectorAll(".b");
+  if (!bars.length) return;
+  const r = chart.getBoundingClientRect(),
+    i = Math.max(0, Math.min(bars.length - 1, Math.floor(((clientX - r.left) / r.width) * bars.length)));
+  bars.forEach((b, j) => b.classList.toggle("hl", j === i));
+  let tip = chart.querySelector(".tip");
+  if (!tip) {
+    tip = el("div", "tip");
+    tip.setAttribute("aria-hidden", "true");
+    chart.appendChild(tip);
+  }
+  const x = chartVals[i];
+  tip.textContent = "";
+  tip.append(el("strong", "", x.v ? fmtDur(x.v) : "0 min"), el("span", "", fmt.short.format(x.dd)));
+  const bar = bars[i],
+    center = bar.offsetLeft + bar.offsetWidth / 2,
+    w = tip.offsetWidth;
+  tip.style.left = Math.max(0, Math.min(chart.clientWidth - w, center - w / 2)) + "px";
+  tip.style.bottom = bar.offsetHeight + 6 + "px";
+}
+function hideChartTip() {
+  const chart = $("chart"),
+    tip = chart.querySelector(".tip");
+  if (tip) tip.remove();
+  chart.querySelectorAll(".b.hl").forEach((b) => b.classList.remove("hl"));
+}
+function initChartTips() {
+  if (chartTipsReady) return;
+  chartTipsReady = true;
+  const chart = $("chart");
+  chart.addEventListener("pointerdown", (e) => showChartTip(e.clientX));
+  chart.addEventListener("pointermove", (e) => {
+    if (e.pointerType === "mouse" || e.buttons) showChartTip(e.clientX);
+  });
+  chart.addEventListener("pointerleave", (e) => {
+    if (e.pointerType === "mouse") hideChartTip();
+  });
+  // touch: the tip stays until the user touches elsewhere
+  document.addEventListener("pointerdown", (e) => {
+    if (!chart.contains(e.target)) hideChartTip();
+  });
+}
+
 function renderStats() {
   const tot = dayTotals(state.cur),
     list = sessions(state.cur),
@@ -404,10 +453,11 @@ function renderStats() {
   gl.style.bottom = (d / max) * 100 + "%";
   gl.title = t("goalPerDay", d);
   chart.appendChild(gl);
+  chartVals = vals;
+  initChartTips();
   vals.forEach((x) => {
     const b = el("div", "b" + (x.v ? " on" : ""));
     b.style.height = (x.v / max) * 100 + "%";
-    b.title = fmt.short.format(x.dd) + " : " + x.v + " min";
     chart.appendChild(b);
     lbls.appendChild(el("span", "", x.i === 0 ? t("todayShort") : x.i % 2 ? "" : fmt.dm.format(x.dd)));
   });

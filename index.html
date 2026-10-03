@@ -399,6 +399,30 @@
         </div>
       </div>
 
+      <div class="modalwrap hide" id="unlockDlg">
+        <form
+          class="modal"
+          id="unlockForm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="ulTitle"
+          aria-describedby="ulMsg"
+          novalidate
+        >
+          <h2 id="ulTitle" data-i18n="unlockT">Déverrouiller la synchronisation</h2>
+          <p class="muted dlg-body" id="ulMsg"></p>
+          <label class="f mt10"
+            ><span data-i18n="passL">Phrase secrète</span
+            ><input id="ulPass" type="password" autocomplete="current-password" spellcheck="false"
+          /></label>
+          <p class="dlg-err hide" id="ulErr" role="alert"></p>
+          <div class="acts">
+            <button class="btn2" id="ulLater" type="button" data-i18n="later">Plus tard</button>
+            <button class="btn" id="ulOk" type="submit" data-i18n="unlock">Déverrouiller</button>
+          </div>
+        </form>
+      </div>
+
       <div class="modalwrap hide" id="newAct">
         <form
           class="modal"

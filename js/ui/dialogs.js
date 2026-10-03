@@ -61,7 +61,7 @@ function closeAsk(value) {
 // ---------- settings sheet & new-activity modal ----------
 export const isOpen = (id) => !$(id).classList.contains("hide");
 function lockScroll() {
-  const anyOverlay = isOpen("settings") || isOpen("newAct") || isOpen("focus");
+  const anyOverlay = isOpen("settings") || isOpen("newAct") || isOpen("unlockDlg") || isOpen("focus");
   document.body.classList.toggle("noscroll", anyOverlay);
 }
 export function openSheet() {
@@ -88,6 +88,28 @@ export function closeNewAct() {
 }
 export { lockScroll };
 
+// ---------- unlock prompt ----------
+let unlockReturnFocus = null;
+export function openUnlock(msg) {
+  unlockReturnFocus = document.activeElement;
+  $("ulMsg").textContent = msg;
+  $("ulPass").value = "";
+  showUnlockError("");
+  $("unlockDlg").classList.remove("hide");
+  lockScroll();
+  $("ulPass").focus();
+}
+export function closeUnlock() {
+  $("unlockDlg").classList.add("hide");
+  $("ulPass").value = "";
+  lockScroll();
+  if (unlockReturnFocus && unlockReturnFocus.focus) unlockReturnFocus.focus();
+}
+export function showUnlockError(msg) {
+  $("ulErr").textContent = msg;
+  $("ulErr").classList.toggle("hide", !msg);
+}
+
 export function initDialogs() {
   initToast();
   $("dKeep").addEventListener("click", () => closeAsk(false));
@@ -95,6 +117,10 @@ export function initDialogs() {
   $("setBg").addEventListener("click", closeSheet);
   $("setClose").addEventListener("click", closeSheet);
   $("naCancel").addEventListener("click", closeNewAct);
+  $("ulLater").addEventListener("click", closeUnlock);
+  $("unlockDlg").addEventListener("click", (e) => {
+    if (e.target === $("unlockDlg")) closeUnlock();
+  });
   $("newAct").addEventListener("click", (e) => {
     if (e.target === $("newAct")) closeNewAct();
   });
@@ -104,6 +130,10 @@ export function initDialogs() {
 export function closeTopOverlay() {
   if (isOpen("dialog")) {
     closeAsk(false);
+    return true;
+  }
+  if (isOpen("unlockDlg")) {
+    closeUnlock();
     return true;
   }
   if (isOpen("newAct")) {
