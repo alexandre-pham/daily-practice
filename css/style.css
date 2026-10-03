@@ -741,6 +741,33 @@ label.f textarea {
 .chart .b.on {
   background: var(--felt);
 }
+.chart {
+  touch-action: pan-y; /* horizontal slides move the tooltip, vertical ones scroll */
+  user-select: none;
+  -webkit-user-select: none;
+}
+.chart .b.hl {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+.chart .tip {
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+  padding: 4px 9px;
+  border-radius: 7px;
+  background: var(--ink);
+  color: var(--surface);
+  font-size: 0.78rem;
+  line-height: 1.3;
+  text-align: center;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+}
+.chart .tip strong {
+  display: block;
+  font-size: 0.95rem;
+}
 .lbls {
   display: flex;
   gap: 5px;
@@ -1144,6 +1171,11 @@ details summary {
 }
 .dlg-body {
   margin: 8px 0 0;
+}
+.dlg-err {
+  margin: 8px 0 0;
+  font-size: 0.88rem;
+  color: var(--felt);
 }
 .help {
   margin: 8px 0 0;
