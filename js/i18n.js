@@ -46,8 +46,15 @@ export const I18N = {
     addForgot: "+ Ajouter une séance oubliée",
     forgot: "Séance oubliée",
     editSess: "Modifier la séance",
+    allSess: "Voir toutes les séances",
+    allT: "Toutes les séances",
+    allSum: (n, d) => n + " séance" + (n > 1 ? "s" : "") + " · " + d,
+    allEmpty: "Aucune séance pour l'instant.",
+    more: "Afficher plus",
+    date: "Date",
+    needDay: "Choisis une date valide, pas dans le futur.",
+    recordedAt: (a, b) => "Séance enregistrée de " + a + " à " + b + ". Les heures suivent la date si tu la changes.",
     add: "Ajouter",
-    update: "Mettre à jour",
     cancel: "Annuler",
     minutes: "Minutes",
     noteOpt: "Note (facultatif)",
@@ -180,6 +187,7 @@ export const I18N = {
     badFile: "Ce fichier n'est pas une sauvegarde du suivi.",
     needMin: "Indique une durée en minutes.",
     updated: "Séance mise à jour.",
+    moved: (d) => "Séance déplacée au " + d + ".",
     added: "Séance ajoutée.",
     needName: "Donne un nom à l'activité.",
     needGoal: "Indique un objectif d'au moins 5 minutes.",
@@ -232,8 +240,15 @@ export const I18N = {
     addForgot: "+ Add a missed session",
     forgot: "Missed session",
     editSess: "Edit session",
+    allSess: "See all sessions",
+    allT: "All sessions",
+    allSum: (n, d) => n + " session" + (n > 1 ? "s" : "") + " · " + d,
+    allEmpty: "No sessions yet.",
+    more: "Show more",
+    date: "Date",
+    needDay: "Pick a valid date, not in the future.",
+    recordedAt: (a, b) => "Recorded from " + a + " to " + b + ". The times follow the date if you change it.",
     add: "Add",
-    update: "Update",
     cancel: "Cancel",
     minutes: "Minutes",
     noteOpt: "Note (optional)",
@@ -366,6 +381,7 @@ export const I18N = {
     badFile: "This file isn't a tracker backup.",
     needMin: "Enter a duration in minutes.",
     updated: "Session updated.",
+    moved: (d) => "Session moved to " + d + ".",
     added: "Session added.",
     needName: "Give the activity a name.",
     needGoal: "Enter a goal of at least 5 minutes.",
@@ -401,6 +417,7 @@ function buildFormatters() {
   fmt.time = new Intl.DateTimeFormat(L, { hour: "2-digit", minute: "2-digit" });
   fmt.dm = new Intl.DateTimeFormat(L, { day: "numeric", month: "numeric" });
   fmt.dayMon = new Intl.DateTimeFormat(L, { day: "numeric", month: "short" });
+  fmt.monthYear = new Intl.DateTimeFormat(L, { month: "long", year: "numeric" });
   fmt.mon = new Intl.DateTimeFormat(L, { month: "short" });
 }
 buildFormatters();

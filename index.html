@@ -182,10 +182,11 @@
                 /></label>
               </div>
               <div class="btns">
-                <button class="btn" id="saveAdd" type="submit">Ajouter</button>
+                <button class="btn" id="saveAdd" type="submit" data-i18n="add">Ajouter</button>
                 <button class="btn2 mut" id="closeAdd" type="button" data-i18n="cancel">Annuler</button>
               </div>
             </form>
+            <button class="linkbtn" id="allBtn" data-i18n="allSess">Voir toutes les séances</button>
           </section>
         </div>
 
@@ -323,6 +324,23 @@
         </div>
       </div>
 
+      <div class="hide" id="allSess">
+        <div class="backdrop" id="allBg"></div>
+        <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="allTitle">
+          <div class="in">
+            <div class="grab"></div>
+            <div class="hd">
+              <h2 id="allTitle" data-i18n="allT">Toutes les séances</h2>
+              <button class="linkbtn closebtn" id="allClose" type="button" data-i18n="close">Fermer</button>
+            </div>
+            <p class="muted small" id="allSum"></p>
+            <p class="muted hide empty-line" id="allEmpty" data-i18n="allEmpty">Aucune séance pour l'instant.</p>
+            <div id="allList"></div>
+            <button class="btn2 hide mt10" id="allMore" type="button" data-i18n="more">Afficher plus</button>
+          </div>
+        </div>
+      </div>
+
       <div class="hide" id="settings">
         <div class="backdrop" id="setBg"></div>
         <div class="sheet" role="dialog" aria-modal="true" data-i18n-aria="settings" aria-label="Réglages">
@@ -397,6 +415,28 @@
             <button class="btn-danger" id="actDel" data-i18n="delAct">Supprimer l'activité</button>
           </div>
         </div>
+      </div>
+
+      <div class="modalwrap hide" id="editDlg">
+        <form class="modal" id="editForm" role="dialog" aria-modal="true" aria-labelledby="edTitle" novalidate>
+          <h2 id="edTitle" data-i18n="editSess">Modifier la séance</h2>
+          <div class="two narrow">
+            <label class="f"><span data-i18n="date">Date</span><input id="edDay" type="date" required /></label>
+            <label class="f"
+              ><span data-i18n="minutes">Minutes</span
+              ><input id="edMin" type="number" min="1" max="600" inputmode="numeric" required
+            /></label>
+          </div>
+          <label class="f mt10"
+            ><span data-i18n="noteOpt">Note (facultatif)</span><input id="edNote" maxlength="500" autocomplete="off"
+          /></label>
+          <p class="muted small dlg-body hide" id="edTimes"></p>
+          <p class="dlg-err hide" id="edErr" role="alert"></p>
+          <div class="acts">
+            <button class="btn2" id="edCancel" type="button" data-i18n="cancel">Annuler</button>
+            <button class="btn" id="edSave" type="submit" data-i18n="save">Enregistrer</button>
+          </div>
+        </form>
       </div>
 
       <div class="modalwrap hide" id="unlockDlg">

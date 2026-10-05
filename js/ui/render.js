@@ -65,6 +65,7 @@ export function renderAll() {
   renderHeader();
   renderView();
   renderSheet();
+  renderAllSessions();
   renderSession();
   renderSync();
 }
@@ -192,44 +193,88 @@ function renderDay() {
   $("dayEmpty").textContent = isToday ? t("emptyToday") : t("emptyDay");
   const ul = $("daySess");
   ul.textContent = "";
-  list.forEach((s) => {
-    const li = el("li"),
-      row = el("div", "row"),
-      txt = el("div", "txt");
-    const sub = [];
-    if (s.note) sub.push(s.note);
-    if (s.bpm) sub.push(t("tempoAt", s.bpm));
-    if (s.pause) sub.push(t("pauseOf", fmtDur(s.pause)));
-    if (s.clips && s.clips.length) sub.push(clipSummary(s.clips));
-    txt.append(el("div", "lbl", sessLabel(s)), el("div", "sub", sub.join(" · ") || "—"));
-    const ed = el("button", "ghosticon");
-    ed.appendChild(icon(ICON_EDIT));
-    ed.setAttribute("aria-label", t("edit"));
-    ed.addEventListener("click", () => actions.editSession(s));
-    const del = el("button", "ghosticon del");
-    del.appendChild(icon(ICON_DEL));
-    del.setAttribute("aria-label", t("del"));
-    del.addEventListener("click", () => actions.deleteSession(s));
-    row.append(txt, ed, del);
-    li.appendChild(row);
-    if (s.clips && s.clips.length) {
-      const cl = el("ul", "clips");
-      s.clips.forEach((c, i) => cl.appendChild(clipItem(c, clipLabel(c, i, s.clips))));
-      li.appendChild(cl);
-    }
-    ul.appendChild(li);
-  });
+  list.forEach((s) => ul.appendChild(sessItem(s, false)));
   renderForm();
 }
 
+const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+
+/** One session row; the full list shows the date and leaves out the recording players. */
+function sessItem(s, inList) {
+  const li = el("li"),
+    row = el("div", "row"),
+    txt = el("div", "txt");
+  const sub = [];
+  if (s.note) sub.push(s.note);
+  if (s.bpm) sub.push(t("tempoAt", s.bpm));
+  if (s.pause) sub.push(t("pauseOf", fmtDur(s.pause)));
+  if (s.clips && s.clips.length) sub.push(clipSummary(s.clips));
+  const lbl = inList ? cap(fmt.short.format(dateOf(s.day))) + " · " + sessLabel(s) : sessLabel(s);
+  txt.append(el("div", "lbl", lbl));
+  if (sub.length || !inList) txt.append(el("div", "sub", sub.join(" · ") || "—"));
+  const ed = el("button", "ghosticon");
+  ed.appendChild(icon(ICON_EDIT));
+  ed.setAttribute("aria-label", t("edit"));
+  ed.addEventListener("click", () => actions.editSession(s));
+  const del = el("button", "ghosticon del");
+  del.appendChild(icon(ICON_DEL));
+  del.setAttribute("aria-label", t("del"));
+  del.addEventListener("click", () => actions.deleteSession(s));
+  row.append(txt, ed, del);
+  li.appendChild(row);
+  if (!inList && s.clips && s.clips.length) {
+    const cl = el("ul", "clips");
+    s.clips.forEach((c, i) => cl.appendChild(clipItem(c, clipLabel(c, i, s.clips))));
+    li.appendChild(cl);
+  }
+  return li;
+}
+
 export function renderForm() {
-  const e = state.editing && state.data.entries[state.editing];
-  if (state.editing && (!e || e.deleted)) state.editing = null;
   $("addBtn").classList.toggle("hide", state.adding);
   $("addForm").classList.toggle("hide", !state.adding);
-  $("formTitle").textContent = state.editing ? t("editSess") : t("forgot");
-  $("saveAdd").textContent = state.editing ? t("update") : t("add");
+  $("formTitle").textContent = t("forgot");
   syncChips();
+}
+
+// ---------- all sessions ----------
+const ALL_PAGE = 50;
+let allLimit = ALL_PAGE;
+export const resetAllSessions = () => {
+  allLimit = ALL_PAGE;
+};
+export function showMoreSessions() {
+  allLimit += ALL_PAGE;
+  renderAllSessions();
+}
+
+export function renderAllSessions() {
+  if ($("allSess").classList.contains("hide")) return;
+  const list = sessions(state.cur).sort(
+    (a, b) => b.day.localeCompare(a.day) || (b.start || b.t || 0) - (a.start || a.t || 0),
+  );
+  const months = {};
+  list.forEach((s) => {
+    const m = s.day.slice(0, 7);
+    months[m] = (months[m] || 0) + (s.min || 0);
+  });
+  const total = list.reduce((a, s) => a + (s.min || 0), 0);
+  $("allSum").textContent = list.length ? t("allSum", list.length, fmtDur(total)) : "";
+  $("allEmpty").classList.toggle("hide", !!list.length);
+  const box = $("allList");
+  box.textContent = "";
+  let month = "",
+    ul = null;
+  list.slice(0, allLimit).forEach((s) => {
+    const m = s.day.slice(0, 7);
+    if (m !== month) {
+      month = m;
+      ul = el("ul", "sess");
+      box.append(el("h3", "", cap(fmt.monthYear.format(dateOf(s.day))) + " · " + fmtDur(months[m])), ul);
+    }
+    ul.appendChild(sessItem(s, true));
+  });
+  $("allMore").classList.toggle("hide", list.length <= allLimit);
 }
 export function syncChips() {
   const v = Number($("minutes").value);

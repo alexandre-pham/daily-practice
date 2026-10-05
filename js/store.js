@@ -4,7 +4,7 @@
 //   acts:    { id: {name, goal, t, created} | {deleted: true, t} }
 //   entries: { "act/YYYY-MM-DD/sid": {min, note, start?, end?, pause?, bpm?, clips?, t} | {deleted: true, t} }
 // Every record carries a timestamp `t`; when two devices disagree, the most recent record wins.
-import { DATE_RE, readJSON, writeJSON, readStr, writeStr, keyOf, addDays, weekStart, uid } from "./util.js";
+import { DATE_RE, readJSON, writeJSON, readStr, writeStr, keyOf, dateOf, addDays, weekStart, uid } from "./util.js";
 import { emit } from "./bus.js";
 
 const LS_DATA = "suivi-piano-v4";
@@ -19,7 +19,6 @@ export const state = {
   view: "sess", // "sess" | "stats"
   page: 0, // calendar window offset, in 5-week pages
   selected: keyOf(new Date()),
-  editing: null, // key of the session being edited
   adding: false,
   focusOpen: false,
 };
@@ -192,6 +191,29 @@ export function newActId(name) {
   return slug + "-" + Math.random().toString(36).slice(2, 6);
 }
 export const sessionKey = (actId, day) => actId + "/" + day + "/" + uid();
+
+/**
+ * Edit a session's date, minutes and note. A new date means a new key: the old key gets a
+ * tombstone so the move syncs, and recorded start/end times shift by the same number of days.
+ * @returns {string|null} the session's key after the edit
+ */
+export function updateSession(key, { day, min, note }) {
+  const e = state.data.entries[key];
+  if (!e || e.deleted) return null;
+  const [actId, oldDay] = key.split("/"),
+    now = Date.now(),
+    next = Object.assign({}, e, { min, note, t: now });
+  if (day === oldDay) {
+    state.data.entries[key] = next;
+    return key;
+  }
+  const offset = Math.round((dateOf(day) - dateOf(oldDay)) / 864e5);
+  for (const f of ["start", "end"]) if (next[f]) next[f] = addDays(new Date(next[f]), offset).getTime();
+  const nk = sessionKey(actId, day);
+  state.data.entries[nk] = next;
+  state.data.entries[key] = { deleted: true, t: now };
+  return nk;
+}
 
 // ---------- queries ----------
 /** Live sessions, optionally for one activity: [{key, act, day, ...entry}] */
