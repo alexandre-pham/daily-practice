@@ -1,7 +1,7 @@
 // Entry point: wires DOM events to state changes and starts the app.
-import { $, uid, todayKey, fmtDur } from "./util.js";
+import { $, uid, todayKey, dateOf, fmtDur, DATE_RE } from "./util.js";
 import { on } from "./bus.js";
-import { t, applyStatic, setLang } from "./i18n.js";
+import { t, fmt, applyStatic, setLang } from "./i18n.js";
 import {
   state,
   load,
@@ -17,6 +17,7 @@ import {
   setData,
   payload,
   ensureActivity,
+  updateSession,
 } from "./store.js";
 import {
   sync,
@@ -47,6 +48,10 @@ import {
   openUnlock,
   closeUnlock,
   showUnlockError,
+  openAllSess,
+  openEdit,
+  closeEdit,
+  showEditError,
 } from "./ui/dialogs.js";
 import {
   setActions,
@@ -59,6 +64,9 @@ import {
   renderMetronome,
   renderSync,
   renderSheet,
+  renderAllSessions,
+  resetAllSessions,
+  showMoreSessions,
   tickClock,
   flashBeat,
 } from "./ui/render.js";
@@ -69,7 +77,6 @@ setActions({
     state.cur = id;
     saveCur();
     state.adding = false;
-    state.editing = null;
     closeMenu();
     renderAll();
   },
@@ -80,22 +87,20 @@ setActions({
   selectDay(day) {
     state.selected = day;
     state.adding = false;
-    state.editing = null;
     renderSessions();
   },
   editSession(s) {
-    state.editing = s.key;
-    state.adding = true;
-    $("minutes").value = s.min;
-    $("note").value = s.note || "";
-    renderForm();
-    $("minutes").focus();
+    editingKey = s.key;
+    $("edDay").value = s.day;
+    $("edDay").max = todayKey();
+    $("edMin").value = s.min;
+    $("edNote").value = s.note || "";
+    const times = !!(s.start && s.end);
+    $("edTimes").classList.toggle("hide", !times);
+    if (times) $("edTimes").textContent = t("recordedAt", fmt.time.format(s.start), fmt.time.format(s.end));
+    openEdit();
   },
   deleteSession(s) {
-    if (state.editing === s.key) {
-      state.editing = null;
-      state.adding = false;
-    }
     const undo = removeWithUndo({ entries: [s.key] });
     renderAll();
     toast(t("sessDeleted"), {
@@ -228,7 +233,6 @@ on("beat", flashBeat);
 // ---------- manual sessions ----------
 $("addBtn").addEventListener("click", () => {
   state.adding = true;
-  state.editing = null;
   $("minutes").value = "";
   $("note").value = "";
   renderForm();
@@ -236,7 +240,6 @@ $("addBtn").addEventListener("click", () => {
 });
 $("closeAdd").addEventListener("click", () => {
   state.adding = false;
-  state.editing = null;
   renderForm();
 });
 $("chips").addEventListener("click", (e) => {
@@ -254,25 +257,46 @@ $("addForm").addEventListener("submit", (e) => {
     $("minutes").focus();
     return;
   }
-  const note = $("note").value.trim().slice(0, 500),
-    now = Date.now();
-  if (state.editing) {
-    state.data.entries[state.editing] = Object.assign({}, state.data.entries[state.editing], {
-      min: Math.min(min, 600),
-      note,
-      t: now,
-    });
-    toast(t("updated"));
-  } else {
-    state.data.entries[state.cur + "/" + state.selected + "/" + uid()] = { min: Math.min(min, 600), note, t: now };
-    toast(t("added"));
-  }
-  state.editing = null;
+  const note = $("note").value.trim().slice(0, 500);
+  state.data.entries[state.cur + "/" + state.selected + "/" + uid()] = { min: Math.min(min, 600), note, t: Date.now() };
+  toast(t("added"));
   state.adding = false;
   $("minutes").value = "";
   $("note").value = "";
   changed();
   renderSessions();
+});
+
+// ---------- all sessions & editing ----------
+let editingKey = null;
+$("allBtn").addEventListener("click", () => {
+  resetAllSessions();
+  openAllSess();
+  renderAllSessions();
+});
+$("allMore").addEventListener("click", showMoreSessions);
+$("editForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const day = $("edDay").value,
+    min = Math.round(Number($("edMin").value)),
+    oldDay = editingKey ? editingKey.split("/")[1] : "";
+  if (!DATE_RE.test(day) || day > todayKey()) {
+    showEditError(t("needDay"));
+    $("edDay").focus();
+    return;
+  }
+  if (!(min >= 1)) {
+    showEditError(t("needMin"));
+    $("edMin").focus();
+    return;
+  }
+  const key = updateSession(editingKey, { day, min: Math.min(min, 600), note: $("edNote").value.trim().slice(0, 500) });
+  editingKey = null;
+  closeEdit();
+  if (!key) return; // deleted meanwhile, e.g. by a sync
+  changed();
+  renderAll();
+  toast(day === oldDay ? t("updated") : t("moved", fmt.short.format(dateOf(day))));
 });
 
 // ---------- activities ----------

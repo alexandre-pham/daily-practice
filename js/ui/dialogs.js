@@ -61,7 +61,7 @@ function closeAsk(value) {
 // ---------- settings sheet & new-activity modal ----------
 export const isOpen = (id) => !$(id).classList.contains("hide");
 function lockScroll() {
-  const anyOverlay = isOpen("settings") || isOpen("newAct") || isOpen("unlockDlg") || isOpen("focus");
+  const anyOverlay = ["settings", "allSess", "editDlg", "newAct", "unlockDlg", "focus"].some(isOpen);
   document.body.classList.toggle("noscroll", anyOverlay);
 }
 export function openSheet() {
@@ -87,6 +87,36 @@ export function closeNewAct() {
   $("actBtn").focus();
 }
 export { lockScroll };
+
+// ---------- all sessions sheet & edit modal ----------
+export function openAllSess() {
+  $("allSess").classList.remove("hide");
+  lockScroll();
+  $("allClose").focus();
+}
+export function closeAllSess() {
+  $("allSess").classList.add("hide");
+  lockScroll();
+  $("allBtn").focus();
+}
+let editReturnFocus = null;
+export function openEdit() {
+  editReturnFocus = document.activeElement;
+  showEditError("");
+  $("editDlg").classList.remove("hide");
+  lockScroll();
+  $("edMin").focus();
+}
+export function closeEdit() {
+  $("editDlg").classList.add("hide");
+  lockScroll();
+  if (editReturnFocus && editReturnFocus.isConnected) editReturnFocus.focus();
+  else if (isOpen("allSess")) $("allClose").focus(); // the list was re-rendered
+}
+export function showEditError(msg) {
+  $("edErr").textContent = msg;
+  $("edErr").classList.toggle("hide", !msg);
+}
 
 // ---------- unlock prompt ----------
 let unlockReturnFocus = null;
@@ -118,6 +148,12 @@ export function initDialogs() {
   $("setClose").addEventListener("click", closeSheet);
   $("naCancel").addEventListener("click", closeNewAct);
   $("ulLater").addEventListener("click", closeUnlock);
+  $("allBg").addEventListener("click", closeAllSess);
+  $("allClose").addEventListener("click", closeAllSess);
+  $("edCancel").addEventListener("click", closeEdit);
+  $("editDlg").addEventListener("click", (e) => {
+    if (e.target === $("editDlg")) closeEdit();
+  });
   $("unlockDlg").addEventListener("click", (e) => {
     if (e.target === $("unlockDlg")) closeUnlock();
   });
@@ -136,8 +172,16 @@ export function closeTopOverlay() {
     closeUnlock();
     return true;
   }
+  if (isOpen("editDlg")) {
+    closeEdit();
+    return true;
+  }
   if (isOpen("newAct")) {
     closeNewAct();
+    return true;
+  }
+  if (isOpen("allSess")) {
+    closeAllSess();
     return true;
   }
   if (isOpen("settings")) {
