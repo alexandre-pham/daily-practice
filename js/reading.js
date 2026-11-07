@@ -109,7 +109,7 @@ export let round = null;
 /** The last finished round's summary, shown until the next one starts. */
 export let lastResult = null;
 
-const LINE_MAX = 6; // notes per line of music: enough to read ahead, still legible on a phone
+const AHEAD = 9; // notes generated ahead of the current one, so the staff always runs off the edge
 const SWITCH = 0.4; // with both clefs, chance of a clef change once the current clef has had 2 notes
 
 /** Clef for the next note: keeps at least 2 notes per clef, so changes stay readable. */
@@ -133,46 +133,30 @@ function pick(prev, run) {
   return { clef, dn: pool[pool.length - 1].dn, res: null };
 }
 
-/** Split a round into lines of similar length, at most LINE_MAX notes each. */
-function lineSizes(total) {
-  const lines = Math.ceil(total / LINE_MAX),
-    base = Math.floor(total / lines),
-    extra = total % lines;
-  return Array.from({ length: lines }, (_, i) => base + (i < extra ? 1 : 0));
+/** Top up the queue of upcoming notes, without going past the end of the round. */
+function fill() {
+  const left = round.total - round.i;
+  while (round.queue.length < Math.min(AHEAD, left)) {
+    const prev = round.queue[round.queue.length - 1] || round.last;
+    const next = pick(prev, round.run);
+    round.run = prev && next.clef === prev.clef ? round.run + 1 : 1;
+    round.queue.push(next);
+  }
 }
 
 export function startRound() {
   lastResult = null;
-  const total = read.prefs.len;
-  round = { total, sizes: lineSizes(total), lineNo: -1, line: [], pos: 0, run: 0, i: 0, ok: 0, times: [], misses: {}, cur: null, shownAt: 0, fb: null };
-  newLine();
-}
-
-function newLine() {
-  round.lineNo++;
-  const n = round.sizes[round.lineNo],
-    line = [];
-  let prev = round.line[round.line.length - 1] || null;
-  for (let k = 0; k < n; k++) {
-    const next = pick(prev, round.run);
-    round.run = prev && next.clef === prev.clef ? round.run + 1 : 1;
-    line.push((prev = next));
-  }
-  round.line = line;
-  round.pos = 0;
-  round.cur = line[0];
+  round = { total: read.prefs.len, queue: [], last: null, run: 0, i: 0, ok: 0, times: [], misses: {}, cur: null, shownAt: 0, fb: null };
+  fill();
+  round.cur = round.queue[0];
   round.shownAt = performance.now();
-  round.fb = null;
 }
 
-/** True when the note just answered was the last one of its line. */
-export const lineDone = () => round && round.pos === round.line.length - 1;
-
-/** Move to the next note, starting a new line when this one is finished. */
+/** Drop the answered note and move to the next one. */
 export function nextNote() {
-  if (round.pos + 1 >= round.line.length) return newLine();
-  round.pos++;
-  round.cur = round.line[round.pos];
+  round.last = round.queue.shift();
+  fill();
+  round.cur = round.queue[0];
   round.shownAt = performance.now();
   round.fb = null;
 }
@@ -181,7 +165,7 @@ export function nextNote() {
  * Answer the current note with a letter (0–6), optionally with an exact MIDI pitch.
  * Returns the feedback: {ok, wrongOctave, letter}.
  */
-export function answer(letter, midi) {
+export function answer(letter, midi, skipped) {
   const { clef, dn } = round.cur,
     ms = performance.now() - round.shownAt,
     rightLetter = letter === letterOf(dn),
@@ -196,7 +180,7 @@ export function answer(letter, midi) {
     round.misses[k] = (round.misses[k] || 0) + 1;
   }
   round.cur.res = ok ? "ok" : "bad";
-  round.fb = { ok, wrongOctave: rightLetter && !ok, letter };
+  round.fb = { ok, wrongOctave: rightLetter && !ok, letter, skipped: !!skipped };
   return round.fb;
 }
 

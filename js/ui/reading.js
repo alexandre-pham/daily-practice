@@ -4,6 +4,7 @@ import { on } from "../bus.js";
 import { t, fmt, lang } from "../i18n.js";
 import { state } from "../store.js";
 import { MIDI_OK, ensureMidi, midiStatusKey } from "../recorder.js";
+import { lockScroll } from "./dialogs.js";
 import {
   read,
   round,
@@ -13,7 +14,6 @@ import {
   nextNote,
   answer,
   roundOver,
-  lineDone,
   endRound,
   dismissResult,
   notesOf,
@@ -22,11 +22,10 @@ import {
   LEVELS,
   LENGTHS,
 } from "../reading.js";
-import { staff } from "./staff.js";
+import { staff, stream } from "./staff.js";
 
 const DELAY_OK = 120,
-  DELAY_WRONG = 900,
-  DELAY_LINE = 400; // extra pause at the end of a line, to see it before the next one
+  DELAY_WRONG = 1000;
 const LETTER_KEYS = "cdefgab";
 let timer = 0;
 
@@ -63,8 +62,7 @@ export function renderRead() {
   $("readSetup").classList.toggle("hide", running || !!lastResult);
   $("readRun").classList.toggle("hide", !running);
   $("readDone").classList.toggle("hide", running || !lastResult);
-  $("readMasterySec").classList.toggle("hide", running);
-  $("readHistSec").classList.toggle("hide", running);
+  lockScroll();
   if (running) renderRound();
   else if (lastResult) renderDone();
   else renderSetup();
@@ -123,42 +121,58 @@ function midiLine() {
   return s ? t(s.key, ...s.args) : t("answerPianoH");
 }
 
+const BLACK_AFTER = [0, 1, 3, 4, 5]; // black keys sit after C, D, F, G and A
+let slide = false,
+  tappedBlack = -1;
+
 function renderRound() {
   const r = round,
     { clef, dn } = r.cur,
     fb = r.fb;
-  $("readProg").textContent = t("progress", Math.min(r.i + (fb ? 0 : 1), r.total), r.total);
-  $("readScore").textContent = t("scoreSoFar", r.ok);
+  $("readProg").textContent = t("progress", r.i, r.total);
   $("readBar").style.width = (r.i / r.total) * 100 + "%";
-  $("readClef").textContent = "";
-  const notes = r.line.map((n, k) => ({
-    dn: n.dn,
-    clef: n.clef,
-    cls: n.res === "ok" ? "is-ok" : n.res === "bad" ? "is-bad" : "",
-    current: k === r.pos,
-    label: n.res === "bad" ? noteName(n.dn) : "",
-  }));
+  const notes = r.queue.map((n, k) => ({ dn: n.dn, clef: n.clef, cls: k === 0 && fb ? (fb.ok ? "is-ok" : "is-bad") : "" }));
   const box = $("readStaff");
   box.textContent = "";
-  box.appendChild(staff(r.line[0].clef, notes, { label: t("staffAria", clefName(clef)), gap: 34, labelRow: true }));
+  box.appendChild(stream(notes, { label: t("staffAria", clefName(clef)), slide }));
+  slide = false;
   const fbEl = $("readFb");
   fbEl.className = "read-fb" + (fb ? (fb.ok ? " ok" : " bad") : "");
   fbEl.textContent = !fb ? "\u00a0" : fb.ok ? t("fbOk") : fb.wrongOctave ? t("fbOctave", noteName(dn)) : t("fbWrong", noteName(dn));
   const keys = $("readKeys");
   keys.textContent = "";
   for (let L = 0; L < 7; L++) {
-    const b = el("button", "rkey");
+    const b = el("button", "wk");
     b.type = "button";
     b.append(el("span", "nm", noteName(L)));
     if (fb) {
-      b.disabled = true;
       if (L === letterOf(dn)) b.classList.add("right");
       else if (L === fb.letter) b.classList.add("wrong");
     }
-    b.addEventListener("click", () => give(L));
+    b.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      give(L);
+    });
+    b.addEventListener("click", (e) => e.detail === 0 && give(L)); // keyboard activation
     keys.appendChild(b);
   }
-  $("readHint").textContent = read.prefs.midi && MIDI_OK ? midiLine() : t("keysHint");
+  BLACK_AFTER.forEach((after, i) => {
+    const b = el("button", "bk bk" + i);
+    b.type = "button";
+    b.tabIndex = -1;
+    b.setAttribute("aria-hidden", "true");
+    if (fb && tappedBlack === i) b.classList.add("wrong");
+    b.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      if (round && !round.fb) tappedBlack = i;
+      give(-1);
+    });
+    keys.appendChild(b);
+  });
+  $("readSkip").disabled = !!fb;
+  const midi = read.prefs.midi && MIDI_OK;
+  $("readHint").textContent = midi ? midiLine() : t("keysHint");
+  $("readHint").classList.toggle("keys", !midi);
 }
 
 function renderDone() {
@@ -216,21 +230,26 @@ function renderHistory() {
 }
 
 // ---------- answering ----------
-function give(letter, midi) {
+function give(letter, midi, skipped) {
   if (!round || round.fb) return;
-  const fb = answer(letter, midi);
+  if (letter >= 0) tappedBlack = -1;
+  const fb = answer(letter, midi, skipped);
   renderRound();
   clearTimeout(timer);
-  timer = setTimeout(advance, (fb.ok ? DELAY_OK : DELAY_WRONG) + (lineDone() ? DELAY_LINE : 0));
+  timer = setTimeout(advance, fb.ok ? DELAY_OK : DELAY_WRONG);
 }
 function advance() {
   if (!round) return;
+  tappedBlack = -1;
   if (roundOver()) endRound();
-  else nextNote();
+  else {
+    nextNote();
+    slide = true;
+  }
   renderRead();
 }
 
-const active = () => state.view === "read" && round && !document.querySelector(".modalwrap:not(.hide), #settings:not(.hide), #allSess:not(.hide)");
+const active = () => !!round;
 
 on("noteon", (midi) => {
   if (!active() || !read.prefs.midi) return;
@@ -247,6 +266,10 @@ export function initReading() {
     renderRead();
     if (read.prefs.midi) await ensureMidi();
     $("readKeys").querySelector("button")?.focus({ preventScroll: true });
+  });
+  $("readSkip").addEventListener("click", () => {
+    tappedBlack = -1;
+    give(-1, undefined, true);
   });
   $("readStop").addEventListener("click", () => {
     clearTimeout(timer);
@@ -267,6 +290,11 @@ export function initReading() {
     const k = e.key.toLowerCase();
     let L = LETTER_KEYS.indexOf(k);
     if (L < 0 && /^[1-7]$/.test(k)) L = Number(k) - 1;
+    if (k === "escape") return $("readStop").click();
+    if (k === " ") {
+      e.preventDefault();
+      return $("readSkip").click();
+    }
     if (L < 0 || k.length !== 1) return;
     e.preventDefault();
     give(L);

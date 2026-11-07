@@ -217,22 +217,6 @@
             <div id="readOpts"></div>
           </section>
 
-          <section class="hero read-run hide" id="readRun">
-            <div class="felt"></div>
-            <div class="body">
-              <div class="read-top">
-                <span class="read-prog" id="readProg"></span>
-                <span class="muted small" id="readScore"></span>
-                <button class="linkbtn read-stop" id="readStop" type="button" data-i18n="readStop">Arrêter</button>
-              </div>
-              <div class="bar"><i id="readBar"></i></div>
-              <div class="read-clef muted small" id="readClef"></div>
-              <div class="staffbox" id="readStaff"></div>
-              <p class="read-fb" id="readFb" aria-live="polite"></p>
-              <div class="rkeys" id="readKeys" role="group" data-i18n-aria="answerL" aria-label="Réponse"></div>
-              <p class="muted small read-hint" id="readHint"></p>
-            </div>
-          </section>
 
           <section class="card read-done hide" id="readDone">
             <h2 data-i18n="doneT">Série terminée</h2>
@@ -321,6 +305,23 @@
 
       <div class="toast hide" id="toast" role="status" aria-live="polite">
         <span id="toastMsg"></span><button type="button" id="toastBtn" class="hide"></button>
+      </div>
+
+      <div class="focus readfs hide" id="readRun" role="dialog" data-i18n-aria="readT" aria-label="Lecture de notes">
+        <div class="in">
+          <div class="read-top">
+            <button class="iconbtn round" id="readStop" type="button" data-i18n-aria="readStop" aria-label="Arrêter">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+            </button>
+            <div class="bar"><i id="readBar"></i></div>
+            <span class="read-prog" id="readProg"></span>
+          </div>
+          <div class="read-stage"><div class="staffbox" id="readStaff"></div></div>
+          <p class="read-fb" id="readFb" aria-live="polite"></p>
+          <div class="piano" id="readKeys" role="group" data-i18n-aria="answerL" aria-label="Réponse"></div>
+          <button class="read-skip" id="readSkip" type="button" data-i18n="skip">Passer</button>
+          <p class="muted small read-hint" id="readHint"></p>
+        </div>
       </div>
 
       <div class="focus hide" id="focus" role="dialog" data-i18n-aria="sessRunning" aria-label="Séance en cours">

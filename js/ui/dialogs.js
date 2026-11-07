@@ -61,7 +61,7 @@ function closeAsk(value) {
 // ---------- settings sheet & new-activity modal ----------
 export const isOpen = (id) => !$(id).classList.contains("hide");
 function lockScroll() {
-  const anyOverlay = ["settings", "allSess", "editDlg", "newAct", "unlockDlg", "focus"].some(isOpen);
+  const anyOverlay = ["settings", "allSess", "editDlg", "newAct", "unlockDlg", "focus", "readRun"].some(isOpen);
   document.body.classList.toggle("noscroll", anyOverlay);
 }
 export function openSheet() {
