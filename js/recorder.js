@@ -69,6 +69,7 @@ function onMidi(e) {
   const st = d[0] & 0xf0;
   if (st === 0x90 && d[2] > 0) held.add(d[1]);
   else if (st === 0x80 || (st === 0x90 && d[2] === 0)) held.delete(d[1]);
+  if (st === 0x90 && d[2] > 0) emit("noteon", d[1]);
   if (!mrec || ![0x80, 0x90, 0xa0, 0xb0, 0xc0, 0xd0, 0xe0].includes(st)) return;
   mrec.events.push({ t: e.timeStamp, d: Array.from(d.slice(0, st === 0xc0 || st === 0xd0 ? 2 : 3)) });
   if (st === 0x90 && d[2] > 0) mrec.notes++;

@@ -70,6 +70,7 @@ import {
   tickClock,
   flashBeat,
 } from "./ui/render.js";
+import { initReading } from "./ui/reading.js";
 
 // ---------- actions used by dynamically rendered elements ----------
 setActions({
@@ -140,6 +141,11 @@ $("tabSess").addEventListener("click", () => {
 });
 $("tabStats").addEventListener("click", () => {
   state.view = "stats";
+  renderAll();
+  window.scrollTo(0, 0);
+});
+$("tabRead").addEventListener("click", () => {
+  state.view = "read";
   renderAll();
   window.scrollTo(0, 0);
 });
@@ -529,6 +535,7 @@ setInterval(() => {
 
 // ---------- start ----------
 initDialogs();
+initReading();
 load();
 applyStatic();
 renderAll();

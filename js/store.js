@@ -16,7 +16,7 @@ export const state = {
   data: { acts: {}, entries: {} },
   cur: "", // current activity id
   run: null, // live session: {act, start, note, clips, pausedMs, pausedAt, bpm}
-  view: "sess", // "sess" | "stats"
+  view: "sess", // "sess" | "stats" | "read"
   page: 0, // calendar window offset, in 5-week pages
   selected: keyOf(new Date()),
   adding: false,

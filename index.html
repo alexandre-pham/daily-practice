@@ -204,6 +204,70 @@
             <div class="hbar" id="byTime"></div>
           </details>
         </div>
+        <div id="viewRead" class="hide">
+          <section class="card read-setup" id="readSetup">
+            <h2 data-i18n="readT">Lecture de notes</h2>
+            <p class="muted read-intro" data-i18n="readIntro">Une note s'affiche : donne son nom le plus vite possible.</p>
+            <button class="primary cta" id="readStart" type="button">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M7 4.5v15l12-7.5z" />
+              </svg>
+              <span data-i18n="readStart">Commencer la série</span>
+            </button>
+            <div id="readOpts"></div>
+          </section>
+
+          <section class="hero read-run hide" id="readRun">
+            <div class="felt"></div>
+            <div class="body">
+              <div class="read-top">
+                <span class="read-prog" id="readProg"></span>
+                <span class="muted small" id="readScore"></span>
+                <button class="linkbtn read-stop" id="readStop" type="button" data-i18n="readStop">Arrêter</button>
+              </div>
+              <div class="bar"><i id="readBar"></i></div>
+              <div class="read-clef muted small" id="readClef"></div>
+              <div class="staffbox" id="readStaff"></div>
+              <p class="read-fb" id="readFb" aria-live="polite"></p>
+              <div class="rkeys" id="readKeys" role="group" data-i18n-aria="answerL" aria-label="Réponse"></div>
+              <p class="muted small read-hint" id="readHint"></p>
+            </div>
+          </section>
+
+          <section class="card read-done hide" id="readDone">
+            <h2 data-i18n="doneT">Série terminée</h2>
+            <div class="done-nums">
+              <div class="big" id="doneScore"></div>
+              <div>
+                <div id="doneAcc"></div>
+                <div class="muted small" id="doneTime"></div>
+              </div>
+            </div>
+            <div id="doneMiss"></div>
+            <div class="btns">
+              <button class="btn" id="readAgain" type="button" data-i18n="again">Recommencer</button>
+              <button class="btn2" id="readBack" type="button" data-i18n="changeOpts">Changer les réglages</button>
+            </div>
+          </section>
+
+          <section class="sec" id="readMasterySec">
+            <h2 data-i18n="masteryT">Maîtrise des notes</h2>
+            <div id="readMastery"></div>
+            <div class="legend mlegend">
+              <span><i class="m0"></i><span data-i18n="mUnseen">pas encore vue</span></span>
+              <span><i class="m1"></i><span data-i18n="mWeak">à travailler</span></span>
+              <span><i class="m2"></i><span data-i18n="mMid">en progrès</span></span>
+              <span><i class="m3"></i><span data-i18n="mGood">acquise</span></span>
+            </div>
+            <p class="muted small" data-i18n="readLocal">Ces résultats restent sur cet appareil.</p>
+          </section>
+
+          <section class="sec" id="readHistSec">
+            <h2 data-i18n="histT">Dernières séries</h2>
+            <p class="muted hide empty-line" id="readHistEmpty" data-i18n="histEmpty">Aucune série pour l'instant.</p>
+            <ul class="rhist" id="readHist"></ul>
+          </section>
+        </div>
       </main>
 
       <nav class="tabbar" data-i18n-aria="views" aria-label="Vues">
@@ -236,6 +300,21 @@
             >
               <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /></svg
             ><span data-i18n="tabStats">Statistiques</span>
+          </button>
+          <button role="tab" id="tabRead" aria-selected="false">
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              aria-hidden="true"
+            >
+              <path d="M2 6h20M2 10h20M2 14h11M2 18h11" />
+              <ellipse cx="18" cy="16" rx="3.4" ry="2.6" fill="currentColor" stroke="none" /></svg
+            ><span data-i18n="tabRead">Lecture</span>
           </button>
         </div>
       </nav>

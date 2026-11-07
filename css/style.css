@@ -843,7 +843,7 @@ details summary {
   max-width: 520px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
 }
 .tabbar button {
   min-height: 60px;
@@ -1115,6 +1115,233 @@ details summary {
   padding: 0 16px;
   font-weight: 600;
 }
+/* reading */
+.read-setup {
+  margin-top: 18px;
+}
+.read-setup h2,
+.read-done h2 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+.read-intro {
+  margin: 6px 0 0;
+}
+.read-setup .cta {
+  margin: 16px 0 6px;
+}
+.rgroup {
+  margin-top: 18px;
+}
+.rlab {
+  font-weight: 600;
+  font-size: 0.92rem;
+  margin-bottom: 8px;
+}
+.rhint {
+  margin: 8px 0 0;
+}
+.read-top {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+.read-prog {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 1.1rem;
+  font-variant-numeric: tabular-nums;
+}
+.read-top .read-stop {
+  margin: 0 0 0 auto;
+  width: auto;
+  min-height: 36px;
+  padding: 0 4px;
+}
+.read-top + .bar {
+  margin-top: 8px;
+  height: 4px;
+}
+.read-clef {
+  margin-top: 12px;
+  text-align: center;
+  min-height: 1.4em;
+}
+.staffbox svg {
+  display: block;
+  margin: 0 auto;
+  height: 176px;
+  width: auto;
+  max-width: 100%;
+}
+.staff .lines line {
+  stroke: var(--muted);
+  stroke-width: 1;
+}
+.staff .clef,
+.staff .head {
+  fill: var(--ink);
+}
+.staff .ledger line {
+  stroke: var(--ink);
+  stroke-width: 1.4;
+}
+.staff .head.is-ok {
+  fill: var(--ok);
+}
+.staff .head.is-bad {
+  fill: var(--felt);
+}
+.read-fb {
+  margin: 4px 0 10px;
+  text-align: center;
+  font-weight: 600;
+  min-height: 1.5em;
+}
+.read-fb.ok {
+  color: var(--ok);
+}
+.read-fb.bad {
+  color: var(--felt);
+}
+.rkeys {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+.rkey {
+  min-height: 96px;
+  padding: 0 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 3px 3px 10px 10px;
+  background: var(--surface);
+  box-shadow: inset 0 -5px 0 var(--key);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  font-weight: 600;
+  color: var(--ink);
+  touch-action: manipulation;
+}
+.rkey .nm {
+  font-size: 0.98rem;
+}
+.rkey:active:not(:disabled) {
+  box-shadow: inset 0 -2px 0 var(--key);
+  transform: translateY(2px);
+}
+.rkey:disabled {
+  opacity: 1;
+  color: var(--muted);
+}
+.rkey.right {
+  background: color-mix(in srgb, var(--ok) 16%, var(--surface));
+  border-color: var(--ok);
+  box-shadow: none;
+  color: var(--ink);
+}
+.rkey.wrong {
+  background: var(--felt-soft);
+  border-color: var(--felt);
+  box-shadow: none;
+  color: var(--ink);
+}
+.read-hint {
+  margin: 12px 0 0;
+  text-align: center;
+}
+.read-done {
+  margin-top: 18px;
+}
+.done-nums {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin: 14px 0 18px;
+}
+.mstaff {
+  margin: 10px 0 0;
+  overflow-x: auto;
+}
+.mstaff svg {
+  display: block;
+  margin: 0 auto;
+  height: 132px;
+  width: auto;
+  max-width: 100%;
+}
+.mstaff figcaption {
+  margin-top: 2px;
+}
+.staff .head.m0 {
+  fill: color-mix(in srgb, var(--muted) 40%, transparent);
+}
+.staff .head.m1 {
+  fill: var(--felt);
+}
+.staff .head.m2 {
+  fill: var(--warn);
+}
+.staff .head.m3 {
+  fill: var(--ok);
+}
+.mlegend i {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+.mlegend {
+  gap: 4px 14px;
+}
+.mlegend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.mlegend .m0 {
+  background: color-mix(in srgb, var(--muted) 40%, transparent);
+}
+.mlegend .m1 {
+  background: var(--felt);
+}
+.mlegend .m2 {
+  background: var(--warn);
+}
+.mlegend .m3 {
+  background: var(--ok);
+}
+.rhist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.rhist li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+.rhist .when {
+  font-weight: 600;
+}
+.rhist .res {
+  grid-row: 1;
+  grid-column: 2;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.rhist .what {
+  grid-column: 1 / -1;
+  font-size: 0.92rem;
+}
+@media (max-width: 360px) {
+  .rkey .nm {
+    font-size: 0.85rem;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .bar > i {
     transition: none;

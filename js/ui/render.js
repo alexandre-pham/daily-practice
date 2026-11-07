@@ -21,6 +21,7 @@ import { MIDI_OK, recInfo, message as recMessage } from "../recorder.js";
 import { getClip, extOf } from "../clips.js";
 import { status as syncStatus, isConnected, isLocked, gistUrl } from "../sync.js";
 import { lockScroll } from "./dialogs.js";
+import { renderRead } from "./reading.js";
 
 let actions = {};
 export const setActions = (a) => {
@@ -111,14 +112,16 @@ function renderHeader() {
   menu.appendChild(add);
 }
 
+const VIEWS = { sess: ["tabSess", "viewSess"], stats: ["tabStats", "viewStats"], read: ["tabRead", "viewRead"] };
 function renderView() {
-  const sess = state.view === "sess";
-  $("tabSess").setAttribute("aria-selected", String(sess));
-  $("tabStats").setAttribute("aria-selected", String(!sess));
-  $("viewSess").classList.toggle("hide", !sess);
-  $("viewStats").classList.toggle("hide", sess);
-  if (sess) renderSessions();
-  else renderStats();
+  for (const v in VIEWS) {
+    const [tab, view] = VIEWS[v];
+    $(tab).setAttribute("aria-selected", String(state.view === v));
+    $(view).classList.toggle("hide", state.view !== v);
+  }
+  if (state.view === "sess") renderSessions();
+  else if (state.view === "stats") renderStats();
+  else renderRead();
 }
 
 // ---------- sessions view ----------
