@@ -13,6 +13,7 @@ import {
   nextNote,
   answer,
   roundOver,
+  lineDone,
   endRound,
   dismissResult,
   notesOf,
@@ -23,8 +24,9 @@ import {
 } from "../reading.js";
 import { staff } from "./staff.js";
 
-const DELAY_OK = 280,
-  DELAY_WRONG = 1500;
+const DELAY_OK = 120,
+  DELAY_WRONG = 900,
+  DELAY_LINE = 400; // extra pause at the end of a line, to see it before the next one
 const LETTER_KEYS = "cdefgab";
 let timer = 0;
 
@@ -128,11 +130,17 @@ function renderRound() {
   $("readProg").textContent = t("progress", Math.min(r.i + (fb ? 0 : 1), r.total), r.total);
   $("readScore").textContent = t("scoreSoFar", r.ok);
   $("readBar").style.width = (r.i / r.total) * 100 + "%";
-  $("readClef").textContent = read.prefs.clef === "tb" ? clefName(clef) : "";
-  const cls = fb ? (fb.ok ? "is-ok" : "is-bad") : "";
+  $("readClef").textContent = "";
+  const notes = r.line.map((n, k) => ({
+    dn: n.dn,
+    clef: n.clef,
+    cls: n.res === "ok" ? "is-ok" : n.res === "bad" ? "is-bad" : "",
+    current: k === r.pos,
+    label: n.res === "bad" ? noteName(n.dn) : "",
+  }));
   const box = $("readStaff");
   box.textContent = "";
-  box.appendChild(staff(clef, [{ dn, cls }], { label: t("staffAria", clefName(clef)), width: 220 }));
+  box.appendChild(staff(r.line[0].clef, notes, { label: t("staffAria", clefName(clef)), gap: 34, labelRow: true }));
   const fbEl = $("readFb");
   fbEl.className = "read-fb" + (fb ? (fb.ok ? " ok" : " bad") : "");
   fbEl.textContent = !fb ? "\u00a0" : fb.ok ? t("fbOk") : fb.wrongOctave ? t("fbOctave", noteName(dn)) : t("fbWrong", noteName(dn));
@@ -213,7 +221,7 @@ function give(letter, midi) {
   const fb = answer(letter, midi);
   renderRound();
   clearTimeout(timer);
-  timer = setTimeout(advance, fb.ok ? DELAY_OK : DELAY_WRONG);
+  timer = setTimeout(advance, (fb.ok ? DELAY_OK : DELAY_WRONG) + (lineDone() ? DELAY_LINE : 0));
 }
 function advance() {
   if (!round) return;

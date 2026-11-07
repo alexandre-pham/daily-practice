@@ -109,27 +109,70 @@ export let round = null;
 /** The last finished round's summary, shown until the next one starts. */
 export let lastResult = null;
 
-function pick(prev) {
-  const clefs = read.prefs.clef === "tb" ? CLEFS : [read.prefs.clef];
+const LINE_MAX = 6; // notes per line of music: enough to read ahead, still legible on a phone
+const SWITCH = 0.4; // with both clefs, chance of a clef change once the current clef has had 2 notes
+
+/** Clef for the next note: keeps at least 2 notes per clef, so changes stay readable. */
+function nextClef(prev, run) {
+  const c = read.prefs.clef;
+  if (c !== "tb") return c;
+  if (!prev) return CLEFS[Math.random() < 0.5 ? 0 : 1];
+  if (run >= 2 && Math.random() < SWITCH) return prev.clef === "t" ? "b" : "t";
+  return prev.clef;
+}
+
+function pick(prev, run) {
+  const clef = nextClef(prev, run);
   const pool = [];
-  for (const clef of clefs)
-    for (const dn of notesOf(clef, read.prefs.level)) {
-      if (prev && prev.clef === clef && prev.dn === dn) continue; // never the same note twice in a row
-      pool.push({ clef, dn, w: weight(clef, dn) });
-    }
+  for (const dn of notesOf(clef, read.prefs.level)) {
+    if (prev && prev.clef === clef && prev.dn === dn) continue; // never the same note twice in a row
+    pool.push({ dn, w: weight(clef, dn) });
+  }
   let r = Math.random() * pool.reduce((a, p) => a + p.w, 0);
-  for (const p of pool) if ((r -= p.w) <= 0) return { clef: p.clef, dn: p.dn };
-  return pool[pool.length - 1];
+  for (const p of pool) if ((r -= p.w) <= 0) return { clef, dn: p.dn, res: null };
+  return { clef, dn: pool[pool.length - 1].dn, res: null };
+}
+
+/** Split a round into lines of similar length, at most LINE_MAX notes each. */
+function lineSizes(total) {
+  const lines = Math.ceil(total / LINE_MAX),
+    base = Math.floor(total / lines),
+    extra = total % lines;
+  return Array.from({ length: lines }, (_, i) => base + (i < extra ? 1 : 0));
 }
 
 export function startRound() {
   lastResult = null;
-  round = { total: read.prefs.len, i: 0, ok: 0, times: [], misses: {}, cur: null, shownAt: 0, fb: null };
-  nextNote();
+  const total = read.prefs.len;
+  round = { total, sizes: lineSizes(total), lineNo: -1, line: [], pos: 0, run: 0, i: 0, ok: 0, times: [], misses: {}, cur: null, shownAt: 0, fb: null };
+  newLine();
 }
 
+function newLine() {
+  round.lineNo++;
+  const n = round.sizes[round.lineNo],
+    line = [];
+  let prev = round.line[round.line.length - 1] || null;
+  for (let k = 0; k < n; k++) {
+    const next = pick(prev, round.run);
+    round.run = prev && next.clef === prev.clef ? round.run + 1 : 1;
+    line.push((prev = next));
+  }
+  round.line = line;
+  round.pos = 0;
+  round.cur = line[0];
+  round.shownAt = performance.now();
+  round.fb = null;
+}
+
+/** True when the note just answered was the last one of its line. */
+export const lineDone = () => round && round.pos === round.line.length - 1;
+
+/** Move to the next note, starting a new line when this one is finished. */
 export function nextNote() {
-  round.cur = pick(round.cur);
+  if (round.pos + 1 >= round.line.length) return newLine();
+  round.pos++;
+  round.cur = round.line[round.pos];
   round.shownAt = performance.now();
   round.fb = null;
 }
@@ -152,6 +195,7 @@ export function answer(letter, midi) {
     const k = noteKey(clef, dn);
     round.misses[k] = (round.misses[k] || 0) + 1;
   }
+  round.cur.res = ok ? "ok" : "bad";
   round.fb = { ok, wrongOctave: rightLetter && !ok, letter };
   return round.fb;
 }

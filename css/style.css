@@ -1165,14 +1165,26 @@ details summary {
 .read-clef {
   margin-top: 12px;
   text-align: center;
-  min-height: 1.4em;
+}
+.read-clef:empty {
+  display: none;
+}
+.staffbox {
+  margin: 4px -8px 0;
 }
 .staffbox svg {
   display: block;
-  margin: 0 auto;
-  height: 176px;
-  width: auto;
-  max-width: 100%;
+  width: 100%;
+  height: auto;
+  max-height: 230px;
+}
+.staff .cursor {
+  fill: var(--felt-soft);
+}
+.staff .nlabel {
+  fill: var(--felt);
+  font-size: 12px;
+  font-weight: 600;
 }
 .staff .lines line {
   stroke: var(--muted);
