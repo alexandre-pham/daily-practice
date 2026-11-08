@@ -1,16 +1,15 @@
-// Google account through Firebase Auth.
+// Account through Firebase Auth, with email and password.
 //
-// Sign-in goes to Google's page and back (OpenID Connect, an ID token returned in the URL
-// fragment), then Firebase exchanges that token for its own session. This avoids Firebase's
-// popup and redirect helpers, which load scripts from apis.google.com: the app keeps a CSP
-// that only runs its own scripts, with Trusted Types enforced.
+// Email/password sign-in only makes API calls to Google (identitytoolkit, securetoken):
+// no popup, no redirect and no Google script in the page, so the app keeps a CSP that
+// only runs its own scripts, with Trusted Types enforced. Accounts are created in the
+// Firebase console; sign-up from the app is turned off in the project settings.
 import { emit } from "./bus.js";
-import { firebaseConfig, GOOGLE_CLIENT_ID } from "./firebase-config.js";
+import { firebaseConfig } from "./firebase-config.js";
 
-const SS_FLOW = "dp-google-signin"; // {state, nonce} of the sign-in in progress
 const LS_HINT = "dp-account"; // set once signed in, so the SDK is only loaded for people who use it
 
-/** Account state for the UI: status is "out", "busy" or "in". */
+/** Account state for the UI: status is "out", "busy" or "in"; error is a key for the message. */
 export const account = { status: "out", email: "", error: "" };
 let fb = null; // {app, auth, api}
 let loading = null;
@@ -53,29 +52,42 @@ export const currentUser = () => (fb && fb.auth.currentUser) || null;
 /** Firebase app and the Auth module, for the sync code. */
 export const firebase = () => load();
 
-const randomToken = () => Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, "0")).join("");
-/** The address Google sends the user back to: this page, without index.html, query or fragment. */
-const returnUrl = () => location.origin + location.pathname.replace(/index\.html$/, "");
+/** Message key for a Firebase Auth error code. */
+function errorKey(e) {
+  const code = (e && e.code) || "";
+  if (/invalid-credential|wrong-password|user-not-found|invalid-login/.test(code)) return "badLogin";
+  if (/invalid-email|missing-email/.test(code)) return "badEmail";
+  if (/missing-password/.test(code)) return "noPass";
+  if (/too-many-requests/.test(code)) return "tooMany";
+  if (/network-request-failed/.test(code)) return "offline";
+  if (/user-disabled/.test(code)) return "disabled";
+  return "failed";
+}
 
-export const canSignIn = () => !!GOOGLE_CLIENT_ID;
-
-/** Leave for Google's sign-in page; the app reloads when Google sends the user back. */
-export function signIn() {
-  if (!GOOGLE_CLIENT_ID) return set({ error: "noClient" });
-  const state = randomToken(),
-    nonce = randomToken();
-  sessionStorage.setItem(SS_FLOW, JSON.stringify({ state, nonce }));
-  const q = new URLSearchParams({
-    client_id: GOOGLE_CLIENT_ID,
-    redirect_uri: returnUrl(),
-    response_type: "id_token",
-    scope: "openid email profile",
-    nonce,
-    state,
-    prompt: "select_account",
-  });
+/** Sign in; resolves to true on success. Errors end up in account.error. */
+export async function signIn(email, password) {
   set({ status: "busy", error: "" });
-  location.assign("https://accounts.google.com/o/oauth2/v2/auth?" + q);
+  try {
+    const { auth, api } = await load();
+    await api.signInWithEmailAndPassword(auth, email.trim(), password);
+    return true;
+  } catch (e) {
+    set({ status: "out", error: errorKey(e) });
+    return false;
+  }
+}
+
+/** Email a password reset link; resolves to true if Firebase accepted the request. */
+export async function resetPassword(email) {
+  try {
+    const { auth, api } = await load();
+    await api.sendPasswordResetEmail(auth, email.trim());
+    set({ error: "" });
+    return true;
+  } catch (e) {
+    set({ error: errorKey(e) });
+    return false;
+  }
 }
 
 export async function signOut() {
@@ -84,42 +96,8 @@ export async function signOut() {
   if (fb) await fb.api.signOut(fb.auth);
 }
 
-/** Finish a sign-in coming back from Google; returns true if the URL was a sign-in return. */
-async function finishFromUrl() {
-  if (!location.hash) return false;
-  const h = new URLSearchParams(location.hash.slice(1));
-  if (!h.has("id_token") && !h.has("error")) return false;
-  // Clean the address bar first: the token must not stay in the URL or the history.
-  history.replaceState(null, "", location.pathname + location.search);
-  let flow = null;
-  try {
-    flow = JSON.parse(sessionStorage.getItem(SS_FLOW));
-  } catch {
-    /* ignore */
-  }
-  sessionStorage.removeItem(SS_FLOW);
-  if (!flow || h.get("state") !== flow.state) {
-    set({ status: "out", error: "badState" });
-    return true;
-  }
-  if (h.has("error")) {
-    set({ status: "out", error: h.get("error") === "access_denied" ? "cancelled" : "google" });
-    return true;
-  }
-  set({ status: "busy", error: "" });
-  try {
-    const { auth, api } = await load();
-    await api.signInWithCredential(auth, api.GoogleAuthProvider.credential(h.get("id_token")));
-  } catch (e) {
-    console.error(e);
-    set({ status: "out", error: "firebase" });
-  }
-  return true;
-}
-
-/** Call once at startup. */
+/** Call once at startup: restores the session if this device was signed in. */
 export async function initCloud() {
-  if (await finishFromUrl()) return;
   if (!localStorage.getItem(LS_HINT)) return;
   set({ status: "busy" });
   try {

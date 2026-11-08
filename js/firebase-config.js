@@ -8,8 +8,3 @@ export const firebaseConfig = {
   messagingSenderId: "307396284827",
   appId: "1:307396284827:web:85e2410ad090fe9b7a513e",
 };
-
-// OAuth web client used for "Sign in with Google" (Google Cloud console → APIs & Services →
-// Credentials → "Web client (auto created by Google Service)"). Its authorized redirect URIs
-// must include the exact address of the app, for example https://alexandre-pham.github.io/daily-practice/
-export const GOOGLE_CLIENT_ID = "";

@@ -528,16 +528,29 @@
               <div class="btns"><button class="btn2" id="sSave" type="submit" data-i18n="save">Enregistrer</button></div>
             </form>
 
-            <h3 data-i18n="acctH">Compte Google</h3>
+            <h3 data-i18n="acctH">Compte</h3>
             <div class="syncline">
-              <span class="sdot" id="acctDot"></span><span id="acctTxt">Non connecté.</span>
+              <span class="sdot" id="acctDot"></span><span id="acctTxt" role="status">Non connecté.</span>
             </div>
             <p class="muted small help" data-i18n="acctHelp">
               Bientôt : tes séances et tes enregistrements MIDI seront sauvegardés avec ce compte. Pour l'instant, la
               synchronisation passe encore par GitHub.
             </p>
+            <form id="acctForm" novalidate>
+              <label class="f mt10"
+                ><span data-i18n="acctEmailL">E-mail</span
+                ><input id="acctEmail" type="email" autocomplete="username" spellcheck="false" autocapitalize="off"
+              /></label>
+              <label class="f mt10"
+                ><span data-i18n="acctPassL">Mot de passe</span
+                ><input id="acctPass" type="password" autocomplete="current-password" spellcheck="false"
+              /></label>
+              <div class="btns">
+                <button class="btn" id="acctSubmit" type="submit" data-i18n="acctSignIn">Se connecter</button>
+                <button class="linkbtn" id="acctForgot" type="button" data-i18n="acctForgot">Mot de passe oublié ?</button>
+              </div>
+            </form>
             <div class="btns">
-              <button class="btn" id="gIn" type="button" data-i18n="acctSignIn">Se connecter avec Google</button>
               <button class="btn2 hide" id="gOut" type="button" data-i18n="acctSignOut">Se déconnecter</button>
             </div>
 
