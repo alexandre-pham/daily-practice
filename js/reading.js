@@ -29,6 +29,22 @@ export const letterOf = (dn) => ((dn % 7) + 7) % 7;
 export const midiOf = (dn) => 12 * (Math.floor(dn / 7) + 1) + SEMI[letterOf(dn)];
 export const noteKey = (clef, dn) => clef + dn;
 
+/**
+ * White keys of the scrollable keyboard, as diatonic numbers: whole octaves covering the notes
+ * of the current settings, and always at least C3 to B4 (the octaves around middle C).
+ */
+export function keyboardRange() {
+  const clefs = read.prefs.clef === "tb" ? CLEFS : [read.prefs.clef];
+  let lo = 21,
+    hi = 34;
+  for (const c of clefs) {
+    const [a, b] = RANGES[read.prefs.level][c];
+    lo = Math.min(lo, a);
+    hi = Math.max(hi, b);
+  }
+  return [lo - letterOf(lo), hi + 6 - letterOf(hi)];
+}
+
 export function notesOf(clef, level) {
   const [lo, hi] = RANGES[level][clef],
     out = [];
@@ -38,7 +54,7 @@ export function notesOf(clef, level) {
 
 // ---------- persistence ----------
 const okClef = (c) => c === "t" || c === "b" || c === "tb";
-const DEFAULT_PREFS = { clef: "t", level: "five", len: 20, names: "", midi: false };
+const DEFAULT_PREFS = { clef: "t", level: "five", len: 20, names: "", midi: false, kbd: "octave" };
 
 function clean(raw) {
   const r = { prefs: Object.assign({}, DEFAULT_PREFS), stats: {}, history: [] };
@@ -49,6 +65,7 @@ function clean(raw) {
   if (LENGTHS.includes(p.len)) r.prefs.len = p.len;
   if (p.names === "solf" || p.names === "abc") r.prefs.names = p.names;
   r.prefs.midi = p.midi === true;
+  if (p.kbd === "octave" || p.kbd === "scroll") r.prefs.kbd = p.kbd;
   const s = raw.stats && typeof raw.stats === "object" ? raw.stats : {};
   for (const k in s) {
     const v = s[k];

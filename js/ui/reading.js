@@ -19,6 +19,8 @@ import {
   notesOf,
   mastery,
   letterOf,
+  midiOf,
+  keyboardRange,
   LEVELS,
   LENGTHS,
 } from "../reading.js";
@@ -90,6 +92,11 @@ function renderSetup() {
       t("rangeH_" + p.level),
     ),
     group(
+      "kbdL",
+      [chip(t("kbdOctave"), p.kbd === "octave", set("kbd", "octave")), chip(t("kbdScroll"), p.kbd === "scroll", set("kbd", "scroll"))],
+      t("kbdH_" + p.kbd),
+    ),
+    group(
       "lenL",
       LENGTHS.map((n) => chip(String(n), p.len === n, set("len", n))),
     ),
@@ -122,16 +129,18 @@ function midiLine() {
 }
 
 const BLACK_AFTER = [0, 1, 3, 4, 5]; // black keys sit after C, D, F, G and A
+const MIDDLE_C = 28;
 let slide = false,
-  tappedBlack = -1;
+  tapped = null, // the key just pressed: {dn} for a white key, {black} for a black one
+  centerKeys = false; // scroll the keyboard to middle C on the next render
 
 /**
  * Width of the staff in SVG units for the space available, so a bigger screen shows more notes
- * rather than bigger ones: at most 1.1 screen pixels per unit and 20% of the screen height.
+ * rather than bigger ones: at most 0.95 screen pixels per unit and 20% of the screen height.
  */
 function streamWidth(box) {
   const px = box.clientWidth || 360,
-    scale = Math.min(1.1, (window.innerHeight * 0.2) / 140);
+    scale = Math.min(0.95, (window.innerHeight * 0.2) / 140);
   return Math.max(260, Math.round(px / scale));
 }
 
@@ -149,41 +158,88 @@ function renderRound() {
   const fbEl = $("readFb");
   fbEl.className = "read-fb" + (fb ? (fb.ok ? " ok" : " bad") : "");
   fbEl.textContent = !fb ? "\u00a0" : fb.ok ? t("fbOk") : fb.wrongOctave ? t("fbOctave", noteName(dn)) : t("fbWrong", noteName(dn));
-  const keys = $("readKeys");
-  keys.textContent = "";
-  for (let L = 0; L < 7; L++) {
-    const b = el("button", "wk");
-    b.type = "button";
-    b.append(el("span", "nm", noteName(L)));
-    if (fb) {
-      if (L === letterOf(dn)) b.classList.add("right");
-      else if (L === fb.letter) b.classList.add("wrong");
-    }
-    b.addEventListener("pointerdown", (e) => {
-      e.preventDefault();
-      give(L);
-    });
-    b.addEventListener("click", (e) => e.detail === 0 && give(L)); // keyboard activation
-    keys.appendChild(b);
-  }
-  BLACK_AFTER.forEach((after, i) => {
-    const b = el("button", "bk bk" + i);
-    b.type = "button";
-    b.tabIndex = -1;
-    b.setAttribute("aria-hidden", "true");
-    if (fb && tappedBlack === i) b.classList.add("wrong");
-    b.addEventListener("pointerdown", (e) => {
-      e.preventDefault();
-      if (round && !round.fb) tappedBlack = i;
-      give(-1);
-    });
-    keys.appendChild(b);
-  });
+  renderKeys(fb, dn);
   $("readSkip").disabled = !!fb;
+  $("readKbd").setAttribute("aria-pressed", String(read.prefs.kbd === "scroll"));
   const midi = read.prefs.midi && MIDI_OK;
   $("readHint").textContent = midi ? midiLine() : t("keysHint");
   $("readHint").classList.toggle("keys", !midi);
 }
+
+/**
+ * The answer keyboard: one octave, where any key of the right name is right, or a scrollable
+ * keyboard of several octaves, where only the key at the right pitch is.
+ */
+function renderKeys(fb, dn) {
+  const scroll = read.prefs.kbd === "scroll",
+    box = $("readKeys"),
+    keep = box.scrollLeft;
+  box.classList.toggle("scroll", scroll);
+  box.textContent = "";
+  const [lo, hi] = scroll ? keyboardRange() : [0, 6];
+  const inner = el("div", "keys");
+  inner.style.setProperty("--n", String(hi - lo + 1));
+  box.appendChild(inner);
+  // In the scrollable keyboard a key answers on click, so that a swipe scrolls instead.
+  const press = (b, fn) => {
+    if (scroll) b.addEventListener("click", fn);
+    else {
+      b.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        fn();
+      });
+      b.addEventListener("click", (e) => e.detail === 0 && fn()); // keyboard activation
+    }
+  };
+  for (let k = lo; k <= hi; k++) {
+    const b = el("button", "wk");
+    b.type = "button";
+    b.setAttribute("aria-label", noteName(k) + (scroll ? " " + octaveLabel(k) : ""));
+    if (scroll && k === MIDDLE_C) b.classList.add("mid");
+    if (fb) {
+      const right = scroll ? k === dn : letterOf(k) === letterOf(dn);
+      if (right) b.classList.add("right");
+      else if (tapped && tapped.dn === k) b.classList.add("wrong");
+    }
+    press(b, () => {
+      if (round && round.fb) return;
+      tapped = { dn: k };
+      if (scroll) give(letterOf(k), midiOf(k));
+      else give(letterOf(k));
+    });
+    inner.appendChild(b);
+    if (k < hi && BLACK_AFTER.includes(letterOf(k))) {
+      const bk = el("button", "bk");
+      bk.type = "button";
+      bk.tabIndex = -1;
+      bk.setAttribute("aria-hidden", "true");
+      bk.style.setProperty("--i", String(k - lo + 1));
+      if (fb && tapped && tapped.black === k) bk.classList.add("wrong");
+      press(bk, () => {
+        if (round && round.fb) return;
+        tapped = { black: k };
+        give(-1, scroll ? midiOf(k) + 1 : undefined);
+      });
+      inner.appendChild(bk);
+    }
+  }
+  if (!scroll) return;
+  const center = (key) => key.offsetLeft + key.offsetWidth / 2 - box.clientWidth / 2;
+  box.scrollLeft = keep;
+  if (centerKeys) {
+    centerKeys = false;
+    const mid = inner.querySelector(".mid");
+    if (mid) box.scrollLeft = center(mid);
+  } else if (fb && !fb.ok) {
+    // After a mistake, bring the right key into view if it is off screen.
+    const right = inner.querySelector(".wk.right");
+    if (right && (right.offsetLeft < box.scrollLeft || right.offsetLeft + right.offsetWidth > box.scrollLeft + box.clientWidth))
+      box.scrollTo({ left: center(right), behavior: "smooth" });
+  }
+}
+
+/** Octave label for the screen reader on the scrollable keyboard, e.g. "4" for middle C's octave. */
+const octaveLabel = (k) => String(Math.floor(k / 7));
 
 function renderDone() {
   const r = lastResult;
@@ -242,7 +298,6 @@ function renderHistory() {
 // ---------- answering ----------
 function give(letter, midi, skipped) {
   if (!round || round.fb) return;
-  if (letter >= 0) tappedBlack = -1;
   const fb = answer(letter, midi, skipped);
   renderRound();
   clearTimeout(timer);
@@ -250,7 +305,7 @@ function give(letter, midi, skipped) {
 }
 function advance() {
   if (!round) return;
-  tappedBlack = -1;
+  tapped = null;
   if (roundOver()) endRound();
   else {
     nextNote();
@@ -279,11 +334,17 @@ window.addEventListener("resize", () => {
 export function initReading() {
   $("readStart").addEventListener("click", async () => {
     startRound();
+    centerKeys = true;
     renderRead();
     if (read.prefs.midi) await ensureMidi();
   });
+  $("readKbd").addEventListener("click", () => {
+    setPref("kbd", read.prefs.kbd === "scroll" ? "octave" : "scroll");
+    centerKeys = true;
+    renderRound();
+  });
   $("readSkip").addEventListener("click", () => {
-    tappedBlack = -1;
+    tapped = null;
     give(-1, undefined, true);
   });
   $("readStop").addEventListener("click", () => {
@@ -293,6 +354,7 @@ export function initReading() {
   });
   $("readAgain").addEventListener("click", () => {
     startRound();
+    centerKeys = true;
     renderRead();
   });
   $("readBack").addEventListener("click", () => {
