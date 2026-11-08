@@ -366,6 +366,8 @@
             <div class="recmsg" id="recMsg"></div>
             <ul class="clips" id="runClips"></ul>
 
+          </div>
+          <div class="fside">
             <section class="metro" id="metro" aria-labelledby="metroTitle">
               <div class="hd">
                 <span class="ttl" id="metroTitle" data-i18n="metro">Métronome</span>
@@ -396,18 +398,18 @@
               </div>
               <p class="hint hide" id="silentHint" data-i18n="silentHint"></p>
             </section>
+            <label class="f"
+              ><span data-i18n="working">Ce que tu travailles</span
+              ><textarea
+                id="runNote"
+                maxlength="500"
+                data-i18n-ph="workingPh"
+                placeholder="Ex. : mesures 9 à 12 mains séparées"
+              ></textarea>
+            </label>
+            <button class="primary cta" id="finishBtn" data-i18n="finishSess">Terminer la séance</button>
+            <button class="linkbtn" id="cancelBtn" data-i18n="cancelSess">Annuler la séance</button>
           </div>
-          <label class="f"
-            ><span data-i18n="working">Ce que tu travailles</span
-            ><textarea
-              id="runNote"
-              maxlength="500"
-              data-i18n-ph="workingPh"
-              placeholder="Ex. : mesures 9 à 12 mains séparées"
-            ></textarea>
-          </label>
-          <button class="primary cta" id="finishBtn" data-i18n="finishSess">Terminer la séance</button>
-          <button class="linkbtn" id="cancelBtn" data-i18n="cancelSess">Annuler la séance</button>
         </div>
       </div>
 
