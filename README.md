@@ -8,6 +8,6 @@ Data is encrypted with a passphrase before being synced across devices through a
 
 ## Reading
 
-The Reading tab is a note-reading drill: a note appears on the staff and you name it with the buttons, the keyboard (C to B or 1 to 7) or, in Chrome with a MIDI piano connected, by playing it. Notes you miss or read slowly come back more often. Results stay on the device and are not synced.
+The Reading tab is a note-reading drill: a note appears on the staff and you name it with the buttons, the keyboard (C to B or 1 to 7) or, in Chrome with a MIDI piano connected, by playing it. Notes you miss or read slowly come back more often. Per-note stats and finished rounds sync through the gist with the sessions; the drill settings stay on each device.
 
 The clef and note shapes in `js/glyphs.js` come from the Bravura font by Steinberg Media Technologies, licensed under the SIL Open Font License 1.1.

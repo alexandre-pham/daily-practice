@@ -21,6 +21,7 @@ import {
   letterOf,
   midiOf,
   keyboardRange,
+  history,
   LEVELS,
   LENGTHS,
 } from "../reading.js";
@@ -282,8 +283,9 @@ function renderMastery() {
 function renderHistory() {
   const list = $("readHist");
   list.textContent = "";
-  $("readHistEmpty").classList.toggle("hide", read.history.length > 0);
-  read.history.slice(0, 6).forEach((h) => {
+  const hist = history();
+  $("readHistEmpty").classList.toggle("hide", hist.length > 0);
+  hist.slice(0, 6).forEach((h) => {
     const li = el("li");
     const what = (h.clef === "tb" ? t("clefBoth") : t(h.clef === "t" ? "clefT" : "clefB")) + ", " + t("range_" + h.level).toLowerCase();
     li.append(

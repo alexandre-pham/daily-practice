@@ -3,6 +3,8 @@
 // Data model (synced to the gist):
 //   acts:    { id: {name, goal, t, created} | {deleted: true, t} }
 //   entries: { "act/YYYY-MM-DD/sid": {min, note, start?, end?, pause?, bpm?, clips?, t} | {deleted: true, t} }
+//   read:    { notes:  { "t30": {n, acc, ms, t} }            note-reading stats, one record per clef and note
+//              rounds: { rid: {clef, level, n, ok, ms, t} } }  finished note-reading rounds
 // Every record carries a timestamp `t`; when two devices disagree, the most recent record wins.
 import { DATE_RE, readJSON, writeJSON, readStr, writeStr, keyOf, dateOf, addDays, weekStart, uid } from "./util.js";
 import { emit } from "./bus.js";
@@ -13,7 +15,7 @@ const LS_CUR = "suivi-piano-current";
 const LS_RUN = "suivi-piano-run";
 
 export const state = {
-  data: { acts: {}, entries: {} },
+  data: { acts: {}, entries: {}, read: { notes: {}, rounds: {} } },
   cur: "", // current activity id
   run: null, // live session: {act, start, note, clips, pausedMs, pausedAt, bpm}
   view: "sess", // "sess" | "stats" | "read"
@@ -78,9 +80,60 @@ function cleanEntry(v) {
   });
 }
 
+const NOTE_RE = /^[tb]\d{1,2}$/;
+const ROUNDS_MAX = 300;
+const okIn = (v, list) => (list.includes(v) ? v : undefined);
+
+function cleanNote(v) {
+  if (!v || typeof v !== "object") return null;
+  const n = num(v.n, 1, 1e7),
+    acc = num(v.acc, 0, 1);
+  if (n === undefined || acc === undefined) return null;
+  return { n: Math.round(n), acc, ms: num(v.ms, 0, 6e5) || 0, t: num(v.t, 0, T_MAX) || 0 };
+}
+function cleanRound(v) {
+  if (!v || typeof v !== "object") return null;
+  const n = num(v.n, 1, 1000),
+    ok = num(v.ok, 0, 1000),
+    clef = okIn(v.clef, ["t", "b", "tb"]),
+    level = okIn(v.level, ["five", "staff", "ledger"]),
+    t = num(v.t, 0, T_MAX);
+  if (n === undefined || ok === undefined || ok > n || !clef || !level || !t) return null;
+  return { clef, level, n, ok, ms: num(v.ms, 0, 6e5) || 0, t };
+}
+
+/** Keep only the most recent rounds, so the synced file stays small. */
+function trimRounds(rounds) {
+  const keys = Object.keys(rounds);
+  if (keys.length <= ROUNDS_MAX) return rounds;
+  const out = {};
+  keys
+    .sort((a, b) => rounds[b].t - rounds[a].t || a.localeCompare(b))
+    .slice(0, ROUNDS_MAX)
+    .forEach((k) => (out[k] = rounds[k]));
+  return out;
+}
+
+function normalizeRead(obj) {
+  const out = { notes: {}, rounds: {} };
+  if (!obj || typeof obj !== "object") return out;
+  const notes = obj.notes && typeof obj.notes === "object" ? obj.notes : {},
+    rounds = obj.rounds && typeof obj.rounds === "object" ? obj.rounds : {};
+  for (const k of Object.keys(notes)) {
+    const v = NOTE_RE.test(k) && cleanNote(notes[k]);
+    if (v) out.notes[k] = v;
+  }
+  for (const k of Object.keys(rounds)) {
+    const v = isId(k) && cleanRound(rounds[k]);
+    if (v) out.rounds[k] = v;
+  }
+  out.rounds = trimRounds(out.rounds);
+  return out;
+}
+
 // ---------- normalisation & migration ----------
 export function normalize(obj) {
-  const out = { acts: {}, entries: {} };
+  const out = { acts: {}, entries: {}, read: normalizeRead(obj && obj.read) };
   if (!obj || typeof obj !== "object") return out;
   if (obj.acts && obj.entries && typeof obj.acts === "object" && typeof obj.entries === "object") {
     for (const id of Object.keys(obj.acts)) {
@@ -114,7 +167,11 @@ function mergeMap(a, b) {
   for (const k in b) if (b[k] && (!out[k] || (b[k].t || 0) > (out[k].t || 0))) out[k] = b[k];
   return out;
 }
-export const merge = (a, b) => ({ acts: mergeMap(a.acts, b.acts), entries: mergeMap(a.entries, b.entries) });
+export const merge = (a, b) => ({
+  acts: mergeMap(a.acts, b.acts),
+  entries: mergeMap(a.entries, b.entries),
+  read: { notes: mergeMap(a.read.notes, b.read.notes), rounds: trimRounds(mergeMap(a.read.rounds, b.read.rounds)) },
+});
 
 function sortObj(o) {
   const r = {};
@@ -125,10 +182,17 @@ function sortObj(o) {
     });
   return r;
 }
-export const canon = (d) => JSON.stringify({ acts: sortObj(d.acts), entries: sortObj(d.entries) });
+const sortRead = (r) => ({ notes: sortObj(r.notes), rounds: sortObj(r.rounds) });
+export const canon = (d) => JSON.stringify({ acts: sortObj(d.acts), entries: sortObj(d.entries), read: sortRead(d.read) });
 export const payload = () =>
   JSON.stringify(
-    { app: "suivi-piano", version: 4, acts: sortObj(state.data.acts), entries: sortObj(state.data.entries) },
+    {
+      app: "suivi-piano",
+      version: 4,
+      acts: sortObj(state.data.acts),
+      entries: sortObj(state.data.entries),
+      read: sortRead(state.data.read),
+    },
     null,
     1,
   );

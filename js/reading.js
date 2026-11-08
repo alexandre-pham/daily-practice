@@ -2,11 +2,12 @@
 //
 // Notes are diatonic numbers: octave * 7 + letter (C = 0 … B = 6), so middle C (C4) is 28.
 // Per-note stats are kept per clef, because reading E4 in the treble clef and in the bass clef
-// are different skills. Stored on this device only (not synced to the gist).
-import { readJSON, writeJSON } from "./util.js";
+// are different skills. Stats and finished rounds live in the synced data (state.data.read);
+// the drill settings stay on each device, so the phone and the computer can differ.
+import { readJSON, writeJSON, uid } from "./util.js";
+import { state, saveLocal, changed } from "./store.js";
 
 const LS_READ = "suivi-reading-v1";
-const HISTORY_MAX = 30;
 
 export const CLEFS = ["t", "b"]; // treble, bass
 /** Diatonic number of each clef's bottom staff line: E4 (treble), G2 (bass). */
@@ -56,68 +57,93 @@ export function notesOf(clef, level) {
 const okClef = (c) => c === "t" || c === "b" || c === "tb";
 const DEFAULT_PREFS = { clef: "t", level: "five", len: 20, names: "", midi: false, kbd: "octave" };
 
-function clean(raw) {
-  const r = { prefs: Object.assign({}, DEFAULT_PREFS), stats: {}, history: [] };
-  if (!raw || typeof raw !== "object") return r;
-  const p = raw.prefs || {};
-  if (okClef(p.clef)) r.prefs.clef = p.clef;
-  if (LEVELS.includes(p.level)) r.prefs.level = p.level;
-  if (LENGTHS.includes(p.len)) r.prefs.len = p.len;
-  if (p.names === "solf" || p.names === "abc") r.prefs.names = p.names;
-  r.prefs.midi = p.midi === true;
-  if (p.kbd === "octave" || p.kbd === "scroll") r.prefs.kbd = p.kbd;
-  const s = raw.stats && typeof raw.stats === "object" ? raw.stats : {};
-  for (const k in s) {
-    const v = s[k];
-    if (!/^[tb]\d{1,2}$/.test(k) || !v || typeof v !== "object") continue;
-    const n = Number(v.n),
-      acc = Number(v.acc),
-      ms = Number(v.ms);
-    if (!(n >= 1) || !(acc >= 0 && acc <= 1)) continue;
-    r.stats[k] = { n: Math.round(n), acc, ms: ms > 0 && ms < 600000 ? ms : 0 };
-  }
-  if (Array.isArray(raw.history))
-    r.history = raw.history
-      .filter((h) => h && typeof h.t === "number" && h.n >= 1 && h.ok >= 0 && h.ok <= h.n && okClef(h.clef))
-      .slice(0, HISTORY_MAX);
+function cleanPrefs(raw) {
+  const r = Object.assign({}, DEFAULT_PREFS),
+    p = (raw && raw.prefs) || {};
+  if (okClef(p.clef)) r.clef = p.clef;
+  if (LEVELS.includes(p.level)) r.level = p.level;
+  if (LENGTHS.includes(p.len)) r.len = p.len;
+  if (p.names === "solf" || p.names === "abc") r.names = p.names;
+  r.midi = p.midi === true;
+  if (p.kbd === "octave" || p.kbd === "scroll") r.kbd = p.kbd;
   return r;
 }
 
-export const read = clean(readJSON(LS_READ, null));
-const save = () => writeJSON(LS_READ, read);
+const local = readJSON(LS_READ, null);
+export const read = { prefs: cleanPrefs(local) };
+const savePrefs = () => writeJSON(LS_READ, { prefs: read.prefs });
 
 export function setPref(key, value) {
   read.prefs[key] = value;
-  save();
+  savePrefs();
+}
+
+/**
+ * Synced reading data. The first time, stats and rounds that earlier versions kept on this device
+ * only are moved into it, so they reach the gist.
+ */
+let migrated = false;
+function data() {
+  const d = state.data.read;
+  if (migrated) return d;
+  migrated = true;
+  if (local && (local.stats || local.history)) {
+    // Oldest possible timestamp, so stats another device has already synced take precedence.
+    const stats = local.stats && typeof local.stats === "object" ? local.stats : {};
+    for (const k in stats) {
+      const v = stats[k];
+      if (!/^[tb]\d{1,2}$/.test(k) || !v || !(v.n >= 1) || !(v.acc >= 0 && v.acc <= 1) || d.notes[k]) continue;
+      d.notes[k] = { n: Math.round(v.n), acc: v.acc, ms: v.ms > 0 && v.ms < 6e5 ? v.ms : 0, t: 1 };
+    }
+    for (const h of Array.isArray(local.history) ? local.history : [])
+      if (h && h.t > 0 && h.n >= 1 && h.ok >= 0 && h.ok <= h.n && okClef(h.clef) && LEVELS.includes(h.level))
+        d.rounds["r" + h.t] = { clef: h.clef, level: h.level, n: h.n, ok: h.ok, ms: h.ms > 0 ? h.ms : 0, t: h.t };
+    savePrefs(); // drops the old stats and history from this device's storage
+    changed();
+  }
+  return d;
+}
+
+/** Finished rounds, newest first. */
+export function history() {
+  const r = data().rounds;
+  return Object.keys(r)
+    .map((k) => r[k])
+    .sort((a, b) => b.t - a.t);
 }
 
 // ---------- mastery ----------
 /** 0 unseen, 1 needs work, 2 getting there, 3 solid. */
 export function mastery(clef, dn) {
-  const s = read.stats[noteKey(clef, dn)];
+  const s = data().notes[noteKey(clef, dn)];
   if (!s) return 0;
   if (s.n >= 3 && s.acc >= 0.9 && s.ms && s.ms <= 2500) return 3;
   return s.acc >= 0.7 ? 2 : 1;
 }
 
 function weight(clef, dn) {
-  const s = read.stats[noteKey(clef, dn)];
+  const s = data().notes[noteKey(clef, dn)];
   if (!s) return 3;
   const slow = s.ms ? Math.min(2, Math.max(0, (s.ms - 1500) / 1000)) : 1;
   return 1 + 4 * (1 - s.acc) + slow;
 }
 
 function record(clef, dn, ok, ms) {
-  const k = noteKey(clef, dn),
-    s = read.stats[k];
+  const notes = data().notes,
+    k = noteKey(clef, dn),
+    s = notes[k],
+    t = Date.now();
   // Moving averages, so recent answers count more than old ones.
-  if (!s) read.stats[k] = { n: 1, acc: ok ? 1 : 0, ms: ok ? ms : 0 };
+  if (!s) notes[k] = { n: 1, acc: ok ? 1 : 0, ms: ok ? ms : 0, t };
   else {
-    s.n++;
-    s.acc = s.acc * 0.75 + (ok ? 0.25 : 0);
-    if (ok) s.ms = s.ms ? s.ms * 0.7 + ms * 0.3 : ms;
+    notes[k] = {
+      n: s.n + 1,
+      acc: s.acc * 0.75 + (ok ? 0.25 : 0),
+      ms: ok ? (s.ms ? s.ms * 0.7 + ms * 0.3 : ms) : s.ms,
+      t,
+    };
   }
-  save();
+  saveLocal(); // synced once, when the round ends
 }
 
 // ---------- round ----------
@@ -220,11 +246,11 @@ export function endRound() {
         .sort((a, b) => b[1] - a[1])
         .map(([k]) => ({ clef: k[0], dn: Number(k.slice(1)) })),
     };
-    read.history.unshift({ t: lastResult.t, clef: lastResult.clef, level: lastResult.level, n: lastResult.n, ok: lastResult.ok, ms: lastResult.ms });
-    read.history.length = Math.min(read.history.length, HISTORY_MAX);
-    save();
+    data().rounds["r" + uid()] = { clef: lastResult.clef, level: lastResult.level, n: lastResult.n, ok: lastResult.ok, ms: lastResult.ms, t: lastResult.t };
   }
+  const answered = round.i > 0;
   round = null;
+  if (answered) changed();
 }
 
 export function dismissResult() {

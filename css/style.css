@@ -1341,7 +1341,8 @@ details summary {
   display: none;
 }
 .piano.scroll .keys {
-  width: calc(var(--n) * 50px);
+  /* about 10 white keys on screen on a phone: smaller than the one-octave keys, so more fit */
+  width: calc(var(--n) * clamp(34px, 9.5vw, 44px));
   margin: 0 auto;
 }
 .wk {
@@ -1457,9 +1458,7 @@ details summary {
   .readfs .piano.scroll {
     width: 100%;
   }
-  .piano.scroll .keys {
-    width: calc(var(--n) * 44px);
-  }
+
   .read-skip {
     max-width: 360px;
     align-self: center;

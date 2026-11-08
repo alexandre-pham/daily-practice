@@ -138,7 +138,7 @@ async function dropOldGist() {
 
 /** @returns {Promise<{data, encrypted: boolean, legacy?: boolean}>} */
 async function readGist() {
-  const empty = { data: { acts: {}, entries: {} }, encrypted: false };
+  const empty = { data: { acts: {}, entries: {}, read: { notes: {}, rounds: {} } }, encrypted: false };
   const g = await gh("/gists/" + cfg.gistId);
   const f = g.files && g.files[FILE];
   if (!f) return empty;
