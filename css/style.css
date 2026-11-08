@@ -1466,6 +1466,96 @@ details summary {
   }
 }
 
+/* ---- computer: a side rail instead of the bottom tab bar, views laid out in columns ---- */
+@media (min-width: 960px) {
+  .app {
+    padding-left: 104px;
+    padding-bottom: 48px;
+  }
+  main,
+  .mini .in {
+    max-width: 1360px;
+    padding-left: 40px;
+    padding-right: 40px;
+  }
+  main {
+    padding-top: 32px;
+  }
+  .tabbar {
+    top: 0;
+    right: auto;
+    width: 104px;
+    border-top: 0;
+    border-right: 1px solid var(--line);
+    padding: calc(28px + env(safe-area-inset-top, 0px)) 0 0;
+  }
+  .tabbar .in {
+    max-width: none;
+    grid-template-columns: 1fr;
+    grid-auto-rows: 84px;
+  }
+  .tabbar button {
+    gap: 6px;
+  }
+
+  #viewSess:not(.hide) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+    grid-template-areas: "hero cal" "day cal";
+    grid-template-rows: auto 1fr;
+    column-gap: 36px;
+    align-items: start;
+  }
+  #viewSess .hero {
+    grid-area: hero;
+  }
+  #viewSess .calsec {
+    grid-area: cal;
+    margin-top: 18px;
+  }
+  #viewSess .daycard {
+    grid-area: day;
+  }
+  .day {
+    aspect-ratio: 6/5;
+    font-size: 0.95rem;
+  }
+
+  #viewStats:not(.hide) {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    column-gap: 36px;
+    align-items: start;
+  }
+  #viewStats .kpis {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  }
+  #viewStats .chart {
+    height: 240px;
+  }
+
+  #viewRead:not(.hide) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas: "main mastery" "main hist";
+    grid-template-rows: auto 1fr;
+    column-gap: 36px;
+    align-items: start;
+  }
+  #readSetup,
+  #readDone {
+    grid-area: main;
+  }
+  #readMasterySec {
+    grid-area: mastery;
+    margin-top: 18px;
+  }
+  #readHistSec {
+    grid-area: hist;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .bar > i {
     transition: none;

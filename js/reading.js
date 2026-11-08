@@ -30,19 +30,19 @@ export const midiOf = (dn) => 12 * (Math.floor(dn / 7) + 1) + SEMI[letterOf(dn)]
 export const noteKey = (clef, dn) => clef + dn;
 
 /**
- * White keys of the scrollable keyboard, as diatonic numbers: whole octaves covering the notes
- * of the current settings, and always at least C3 to B4 (the octaves around middle C).
+ * White keys of the scrollable keyboard, as diatonic numbers: every note the current settings can
+ * show, plus two keys on each side, so a note can still be played in the wrong octave nearby.
  */
 export function keyboardRange() {
   const clefs = read.prefs.clef === "tb" ? CLEFS : [read.prefs.clef];
-  let lo = 21,
-    hi = 34;
+  let lo = Infinity,
+    hi = -Infinity;
   for (const c of clefs) {
     const [a, b] = RANGES[read.prefs.level][c];
     lo = Math.min(lo, a);
     hi = Math.max(hi, b);
   }
-  return [lo - letterOf(lo), hi + 6 - letterOf(hi)];
+  return [lo - 2, hi + 2];
 }
 
 export function notesOf(clef, level) {
