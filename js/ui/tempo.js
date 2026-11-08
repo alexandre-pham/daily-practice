@@ -37,6 +37,7 @@ export async function openTempo(blob, label) {
   const est = estimateTempo(parsed.notes);
   cur = { parsed, est, ref: est, a: null, label, player: new Player(parsed.notes, parsed.duration) };
   cur.player.onEnd = renderControls;
+  warmUp(cur.player);
   reanalyze();
   setRate(1);
   $("tempoBody").classList.remove("hide");
@@ -75,11 +76,40 @@ const avg = (s) => {
 };
 
 // ---------- controls ----------
-function togglePlay() {
+/** Start loading the piano as soon as the sheet opens, so Play usually starts at once. */
+function warmUp(p) {
+  p.loadP = p.prepare();
+  p.loadP.catch(() => {}); // reported when Play is pressed
+}
+
+async function togglePlay() {
   if (!cur) return;
-  cur.player.playing ? cur.player.pause() : cur.player.play();
+  const p = cur.player;
+  if (p.playing) p.pause();
+  else {
+    if (!p.ready) {
+      setLoading(true);
+      try {
+        await (p.loadP || p.prepare()).catch(() => p.prepare()); // retry once if the first load failed
+      } catch {
+        setLoading(false);
+        $("tempoErr").textContent = t("tempoLoadFail");
+        $("tempoErr").classList.remove("hide");
+        return;
+      }
+      setLoading(false);
+      if (!cur || cur.player !== p) return; // closed meanwhile
+    }
+    $("tempoErr").classList.add("hide");
+    p.play();
+  }
   renderControls();
   frame();
+}
+function setLoading(on) {
+  $("tPlay").disabled = on;
+  if (on) $("tPlayTxt").textContent = t("tempoLoading");
+  else renderControls();
 }
 function setRate(r) {
   if (!cur) return;

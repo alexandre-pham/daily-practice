@@ -1,16 +1,57 @@
-// Plays parsed MIDI notes with a small synthesized piano (Web Audio, no samples),
-// scheduled ahead on the audio clock like the metronome. Position is in seconds of the piece.
+// Plays parsed MIDI notes with a sampled grand piano (Salamander Grand Piano, see
+// audio/piano/README.md), scheduled ahead on the audio clock like the metronome.
+// Position is in seconds of the piece.
 
 const LOOKAHEAD_S = 0.25,
-  TICK_MS = 40;
+  TICK_MS = 40,
+  RELEASE_S = 0.35, // damper: how long a note takes to die away once released
+  REVERB_WET = 0.16;
 
-let wave = null;
-function pianoWave(ctx) {
-  if (wave) return wave;
-  // A few decaying harmonics: plain enough to stay clean, enough to sound like a struck string.
-  const amps = [0, 1, 0.55, 0.32, 0.2, 0.12, 0.08, 0.05, 0.03];
-  wave = ctx.createPeriodicWave(new Float32Array(amps.length), Float32Array.from(amps));
-  return wave;
+// One sample every minor third, A0 to C8; the notes in between are pitch-shifted.
+const NAMES = ["C", "Ds", "Fs", "A"];
+const SAMPLES = [];
+for (let midi = 21; midi <= 108; midi += 3) {
+  const pc = midi % 12;
+  SAMPLES.push({ midi, file: NAMES[[0, 3, 6, 9].indexOf(pc)] + (Math.floor(midi / 12) - 1) + ".mp3" });
+}
+
+let buffers = null; // Map midi → AudioBuffer, shared by every player
+let loading = null;
+
+/** Load and decode all samples once; resolves when the piano is ready. */
+function loadPiano(ctx) {
+  if (buffers) return Promise.resolve();
+  if (!loading)
+    loading = Promise.all(
+      SAMPLES.map(async (s) => {
+        const r = await fetch("audio/piano/" + s.file);
+        if (!r.ok) throw new Error("sample " + s.file);
+        const data = await r.arrayBuffer();
+        // Safari only has the callback form of decodeAudioData.
+        const buf = await new Promise((ok, ko) => ctx.decodeAudioData(data, ok, ko));
+        return [s.midi, buf];
+      }),
+    ).then(
+      (list) => {
+        buffers = new Map(list);
+      },
+      (e) => {
+        loading = null;
+        throw e;
+      },
+    );
+  return loading;
+}
+
+/** A short synthetic room: decaying stereo noise, enough to take the dryness off. */
+function roomImpulse(ctx) {
+  const len = Math.round(ctx.sampleRate * 1.6),
+    ir = ctx.createBuffer(2, len, ctx.sampleRate);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = ir.getChannelData(ch);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.5);
+  }
+  return ir;
 }
 
 export class Player {
@@ -30,26 +71,46 @@ export class Player {
     this.onEnd = null;
   }
 
+  get ready() {
+    return !!buffers;
+  }
+
   /** Current position in the piece, in seconds. */
   time() {
     if (!this.playing) return this.pos;
     return Math.min(this.duration, this.pos0 + (this.ctx.currentTime - this.t0) * this.rate);
   }
 
-  /** Must be called from a user gesture the first time (browsers only allow audio after one). */
-  play() {
-    if (this.playing) return;
+  setup() {
+    if (this.ctx) return true;
     const AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return;
-    if (!this.ctx) {
-      this.ctx = new AC();
-      const comp = this.ctx.createDynamicsCompressor();
-      comp.threshold.value = -14;
-      comp.ratio.value = 4;
-      this.out = this.ctx.createGain();
-      this.out.gain.value = 0.8;
-      this.out.connect(comp).connect(this.ctx.destination);
-    }
+    if (!AC) return false;
+    this.ctx = new AC();
+    const ctx = this.ctx,
+      comp = ctx.createDynamicsCompressor(),
+      rev = ctx.createConvolver(),
+      wet = ctx.createGain();
+    comp.threshold.value = -12;
+    comp.ratio.value = 3;
+    rev.buffer = roomImpulse(ctx);
+    wet.gain.value = REVERB_WET;
+    this.out = ctx.createGain();
+    this.out.gain.value = 2.4;
+    this.out.connect(comp);
+    this.out.connect(rev).connect(wet).connect(comp);
+    comp.connect(ctx.destination);
+    return true;
+  }
+
+  /** Create the audio context (call it from a user gesture) and load the piano. */
+  async prepare() {
+    if (!this.setup()) throw new Error("no Web Audio");
+    this.ctx.resume();
+    await loadPiano(this.ctx);
+  }
+
+  play() {
+    if (this.playing || !buffers || !this.setup()) return;
     this.ctx.resume();
     if (this.pos >= this.duration - 0.05) this.pos = 0;
     this.playing = true;
@@ -95,8 +156,8 @@ export class Player {
     this.voices.forEach((v) => {
       try {
         v.g.gain.cancelScheduledValues(now);
-        v.g.gain.setTargetAtTime(0, now, 0.015);
-        v.o.stop(now + 0.1);
+        v.g.gain.setTargetAtTime(0, now, 0.03);
+        v.src.stop(now + 0.2);
       } catch {
         /* already stopped */
       }
@@ -111,7 +172,7 @@ export class Player {
     while (this.next < this.notes.length && this.notes[this.next].t <= horizon) {
       const n = this.notes[this.next++];
       if (n.t < this.pos0 - 0.01) continue;
-      this.voice(n, this.t0 + (n.t - this.pos0) / this.rate);
+      this.voice(n, Math.max(now, this.t0 + (n.t - this.pos0) / this.rate));
     }
     if (this.time() >= this.duration) {
       this.pause();
@@ -121,30 +182,29 @@ export class Player {
   }
 
   voice(n, when) {
-    const ctx = this.ctx,
-      freq = 440 * Math.pow(2, (n.p - 69) / 12),
-      o = ctx.createOscillator(),
+    const ctx = this.ctx;
+    // Nearest sample; at most a semitone and a half of pitch shift.
+    let s = SAMPLES[0];
+    for (const x of SAMPLES) if (Math.abs(x.midi - n.p) < Math.abs(s.midi - n.p)) s = x;
+    const src = ctx.createBufferSource(),
       g = ctx.createGain(),
-      lp = ctx.createBiquadFilter();
-    o.setPeriodicWave(pianoWave(ctx));
-    o.frequency.value = freq;
-    // Louder notes are brighter; high notes die away faster than low ones.
-    const vel = n.v / 127,
-      peak = 0.22 * Math.pow(vel, 1.5),
-      decay = Math.max(0.6, 4.5 - (n.p - 36) * 0.06),
-      ring = Math.max(0.08, n.ring / this.rate),
-      end = when + ring;
-    lp.type = "lowpass";
-    lp.frequency.value = Math.min(12000, freq * (3 + 9 * vel));
-    g.gain.setValueAtTime(0.0001, when);
-    g.gain.exponentialRampToValueAtTime(peak, when + 0.006);
-    g.gain.setTargetAtTime(peak * 0.25, when + 0.006, decay / 4);
-    g.gain.setTargetAtTime(0.0001, end, 0.09);
-    o.connect(lp).connect(g).connect(this.out);
-    o.start(when);
-    o.stop(end + 0.6);
-    const v = { o, g };
+      tone = ctx.createBiquadFilter();
+    src.buffer = buffers.get(s.midi);
+    src.playbackRate.value = Math.pow(2, (n.p - s.midi) / 12);
+    // One velocity layer: soft notes are made quieter and darker, as on a real piano.
+    const vel = n.v / 127;
+    tone.type = "lowpass";
+    tone.frequency.value = 900 + 17000 * vel * vel;
+    tone.Q.value = 0.3;
+    const peak = 0.85 * Math.pow(vel, 1.6),
+      end = when + Math.max(0.05, n.ring / this.rate);
+    g.gain.setValueAtTime(peak, when);
+    g.gain.setTargetAtTime(0, end, RELEASE_S / 4);
+    src.connect(tone).connect(g).connect(this.out);
+    src.start(when);
+    src.stop(end + RELEASE_S * 2);
+    const v = { src, g };
     this.voices.add(v);
-    o.onended = () => this.voices.delete(v);
+    src.onended = () => this.voices.delete(v);
   }
 }

@@ -31,7 +31,7 @@ import {
   PASS_MIN,
   status as syncStatus,
 } from "./sync.js";
-import { startMidi, stopMidi, startAudio, stopAudio, recInfo, refreshMessage } from "./recorder.js";
+import { startMidi, stopMidi, recInfo, refreshMessage } from "./recorder.js";
 import { metro, startSession, stopSession, cancelSession, togglePause, keepAwake, noteBpm } from "./session.js";
 import { BPM_MIN, BPM_MAX } from "./metronome.js";
 import { removeWithUndo, UNDO_DURATION } from "./undo.js";
@@ -201,7 +201,6 @@ $("cancelBtn").addEventListener("click", async () => {
 });
 $("pauseBtn").addEventListener("click", togglePause);
 $("midiBtn").addEventListener("click", () => (recInfo().midi ? stopMidi() : startMidi()));
-$("audioBtn").addEventListener("click", () => (recInfo().audio ? stopAudio() : startAudio()));
 $("runNote").addEventListener("input", () => {
   if (!state.run) return;
   state.run.note = $("runNote").value;
@@ -526,7 +525,7 @@ document.addEventListener("visibilitychange", () => {
 });
 window.addEventListener("beforeunload", (e) => {
   const r = recInfo();
-  if (r.midi || r.audio) {
+  if (r.midi) {
     e.preventDefault();
     e.returnValue = "";
   }
@@ -534,7 +533,7 @@ window.addEventListener("beforeunload", (e) => {
 setInterval(() => {
   tickClock();
   const r = recInfo();
-  if (r.midi || r.audio) renderRecording();
+  if (r.midi) renderRecording();
 }, 1000);
 
 // ---------- start ----------

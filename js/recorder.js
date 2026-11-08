@@ -1,4 +1,4 @@
-// MIDI (Web MIDI) and microphone (MediaRecorder) recording during a live session.
+// MIDI (Web MIDI) recording during a live session.
 import { uid } from "./util.js";
 import { emit } from "./bus.js";
 import { state, saveRun } from "./store.js";
@@ -11,7 +11,6 @@ const PPQ = 480,
 const midi = { access: null, input: null, asked: false };
 const held = new Set();
 let mrec = null; // {startedAt, events, notes}
-let arec = null; // {mr, stream, chunks, startedAt, mime}
 
 /** Message shown under the record buttons: {key, args} for i18n, or null. */
 export let message = null;
@@ -20,10 +19,9 @@ function say(key, ...args) {
   emit("rec");
 }
 
-export const recording = () => !!(mrec || arec);
+export const recording = () => !!mrec;
 export const recInfo = () => ({
   midi: mrec && { startedAt: mrec.startedAt, notes: mrec.notes },
-  audio: arec && { startedAt: arec.startedAt },
 });
 
 // ---------- MIDI ----------
@@ -181,75 +179,8 @@ export async function stopMidi() {
   showMidiStatus();
 }
 
-// ---------- audio ----------
-function pickMime() {
-  if (!window.MediaRecorder || !MediaRecorder.isTypeSupported) return "";
-  return (
-    ["audio/mp4", "audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus"].find((m) =>
-      MediaRecorder.isTypeSupported(m),
-    ) || ""
-  );
-}
-
-export async function startAudio() {
-  if (!state.run || state.run.pausedAt || arec) return;
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder) return say("noAudio");
-  let stream;
-  try {
-    // Raw signal: echo cancellation and noise suppression damage piano sound.
-    stream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
-    });
-  } catch (e) {
-    return say(e && e.name === "NotAllowedError" ? "micDenied" : "micFail");
-  }
-  const mime = pickMime();
-  let mr;
-  try {
-    mr = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
-  } catch {
-    stream.getTracks().forEach((tr) => tr.stop());
-    return say("audioFail");
-  }
-  const rec = { mr, stream, chunks: [], startedAt: Date.now(), mime: mr.mimeType || mime };
-  arec = rec;
-  mr.ondataavailable = (e) => {
-    if (e.data && e.data.size) rec.chunks.push(e.data);
-  };
-  mr.start(1000);
-  emit("rec");
-}
-
-export async function stopAudio() {
-  if (!arec) return;
-  const r = arec;
-  await new Promise((resolve) => {
-    r.mr.onstop = async () => {
-      r.stream.getTracks().forEach((tr) => tr.stop());
-      const blob = new Blob(r.chunks, { type: r.mime || "audio/webm" });
-      arec = null;
-      if (blob.size && state.run) {
-        await saveClip(blob, {
-          id: "c" + uid(),
-          at: r.startedAt,
-          dur: Math.round((Date.now() - r.startedAt) / 1000),
-          mime: blob.type,
-        });
-      }
-      resolve();
-    };
-    try {
-      r.mr.stop();
-    } catch {
-      r.mr.onstop();
-    }
-  });
-  emit("rec");
-}
-
 export async function stopAll() {
   await stopMidi();
-  await stopAudio();
 }
 
 export function refreshMessage() {

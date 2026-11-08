@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; media-src blob:; connect-src https://api.github.com https://gist.githubusercontent.com; base-uri 'none'; form-action 'none'; object-src 'none'; require-trusted-types-for 'script'; trusted-types 'none'"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; media-src blob:; connect-src 'self' https://api.github.com https://gist.githubusercontent.com; base-uri 'none'; form-action 'none'; object-src 'none'; require-trusted-types-for 'script'; trusted-types 'none'"
     />
     <meta name="referrer" content="no-referrer" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -367,9 +367,6 @@
               <button class="recbtn" id="midiBtn" type="button" aria-pressed="false">
                 <span class="d"></span><span id="midiLbl">Enregistrer en MIDI</span>
               </button>
-              <button class="recbtn" id="audioBtn" type="button" aria-pressed="false">
-                <span class="d"></span><span id="audioLbl">Enregistrer le son</span>
-              </button>
             </div>
             <div class="recmsg" id="recMsg"></div>
             <ul class="clips" id="runClips"></ul>
@@ -480,6 +477,9 @@
                 </div>
               </div>
               <p class="muted small" data-i18n="tempoHint"></p>
+              <p class="muted small" data-i18n="tempoCredit">
+                Son de piano : Salamander Grand Piano d'Alexander Holm (Yamaha C5), licence CC BY 3.0.
+              </p>
             </div>
           </div>
         </div>

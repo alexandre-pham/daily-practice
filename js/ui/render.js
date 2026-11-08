@@ -375,14 +375,10 @@ export function renderRecording() {
   $("midiBtn").classList.toggle("on", !!info.midi);
   $("midiBtn").setAttribute("aria-pressed", String(!!info.midi));
   $("midiBtn").disabled = paused;
-  $("audioBtn").classList.toggle("on", !!info.audio);
-  $("audioBtn").setAttribute("aria-pressed", String(!!info.audio));
-  $("audioBtn").disabled = paused;
   $("midiLbl").textContent = info.midi
     ? t("midiStop", fmtSec((Date.now() - info.midi.startedAt) / 1000), info.midi.notes)
     : t("midiRec");
-  $("audioLbl").textContent = info.audio ? t("audioStop", fmtSec((Date.now() - info.audio.startedAt) / 1000)) : t("audioRec");
-  const msg = paused && !info.midi && !info.audio ? { key: "pausedMsg", args: [] } : recMessage;
+  const msg = paused && !info.midi ? { key: "pausedMsg", args: [] } : recMessage;
   $("recMsg").textContent = msg ? t(msg.key, ...msg.args) : "";
   const ul = $("runClips");
   ul.textContent = "";
