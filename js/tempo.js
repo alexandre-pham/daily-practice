@@ -223,26 +223,33 @@ export function estimateTempo(notes) {
   return Math.round(bpm);
 }
 
-// Note values a gap can be, in quarter notes. 2/3 is left out: too close to 3/4.
-const VALUES = [0.25, 1 / 3, 0.5, 0.75, 1, 1.5, 2];
+// Spans a measurement can cover, in quarter notes. Measuring over at least a beat,
+// rather than note to note, makes uneven subdivisions (a long-short pair of eighths)
+// cancel out instead of biasing the result.
+const SPANS = [1, 1.5, 2];
 const TOL = 0.12;
+const MIN_SPAN = 0.8; // in beats: the shortest span measured from a note
 
 /**
- * Follow the beat of one hand. Each gap between two notes is matched to the note
- * value it most likely is, given the tempo so far; gaps that match nothing well
- * (long notes, rests, hesitations) are skipped rather than guessed.
+ * Follow the beat of one hand. From each note, the time to the first later note
+ * at least about a beat away is matched to 1, 1.5 or 2 beats, given the tempo so
+ * far; spans that match none of them well (long notes, rests, hesitations) are
+ * skipped rather than guessed.
  * Returns [{t, beat}] where beat is the length of a quarter note in seconds.
  */
 function follow(on, ref) {
   const q = 60 / ref,
     out = [];
   let L = q;
-  for (let i = 1; i < on.length; i++) {
-    const g = on[i] - on[i - 1];
-    if (g < 0.09 || g > 2.2 * L) continue;
-    let c = VALUES[0],
+  for (let i = 0, j = 1; i < on.length; i++) {
+    if (j <= i) j = i + 1;
+    while (j < on.length && on[j] - on[i] < MIN_SPAN * L) j++;
+    if (j >= on.length) break;
+    const g = on[j] - on[i];
+    if (g > 2.2 * L) continue;
+    let c = SPANS[0],
       err = Infinity;
-    VALUES.forEach((v) => {
+    SPANS.forEach((v) => {
       const e = Math.abs(Math.log(g / L / v));
       if (e < err) {
         err = e;
@@ -251,7 +258,7 @@ function follow(on, ref) {
     });
     if (err > TOL) continue;
     const beat = g / c;
-    out.push({ t: on[i], beat });
+    out.push({ t: on[j], beat });
     L = Math.min(q * 1.4, Math.max(q * 0.7, L * 0.75 + beat * 0.25));
   }
   return out;
