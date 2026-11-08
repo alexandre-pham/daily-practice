@@ -1,9 +1,10 @@
 // "Account" section of the settings sheet: email and password sign-in.
 import { $ } from "../util.js";
-import { t } from "../i18n.js";
+import { t, fmt } from "../i18n.js";
 import { on } from "../bus.js";
 import { toast } from "./dialogs.js";
 import { account, signIn, signOut, resetPassword, initCloud } from "../cloud.js";
+import { cloudStatus } from "../cloud-sync.js";
 
 function render() {
   const a = account,
@@ -14,10 +15,22 @@ function render() {
   $("acctForm").classList.toggle("hide", st === "in");
   $("acctSubmit").disabled = st === "busy";
   $("gOut").classList.toggle("hide", st !== "in");
+  const c = cloudStatus;
+  $("cloudLine").classList.toggle("hide", st !== "in" || !c.state);
+  $("cloudDot").className = "sdot" + (c.state === "ok" ? " ok" : c.state === "busy" ? " busy" : c.state === "err" ? " err" : "");
+  $("cloudTxt").textContent =
+    c.state === "ok"
+      ? t("cloudOk", fmt.time.format(new Date(c.at)))
+      : c.state === "busy"
+        ? t("cloudBusy")
+        : c.state === "err"
+          ? t("cloudErr_" + c.error)
+          : "";
 }
 
 export function initAccount() {
   on("account", render);
+  on("cloudsync", render);
   on("lang", render);
   $("acctForm").addEventListener("submit", async (e) => {
     e.preventDefault();

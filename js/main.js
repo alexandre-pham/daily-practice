@@ -73,6 +73,7 @@ import {
 import { initReading } from "./ui/reading.js";
 import { initTempo, openTempo } from "./ui/tempo.js";
 import { initAccount } from "./ui/account.js";
+import { initCloudSync } from "./cloud-sync.js";
 
 // ---------- actions used by dynamically rendered elements ----------
 setActions({
@@ -542,6 +543,7 @@ initDialogs();
 initReading();
 initTempo();
 load();
+initCloudSync();
 initAccount();
 applyStatic();
 renderAll();

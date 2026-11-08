@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; media-src blob:; connect-src 'self' https://api.github.com https://gist.githubusercontent.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; base-uri 'none'; form-action 'none'; object-src 'none'; require-trusted-types-for 'script'; trusted-types 'none'"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data: https://www.google.com/images/cleardot.gif; media-src blob:; connect-src 'self' https://api.github.com https://gist.githubusercontent.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com; base-uri 'none'; form-action 'none'; object-src 'none'; require-trusted-types-for 'script'; trusted-types 'none'"
     />
     <meta name="referrer" content="no-referrer" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -532,9 +532,12 @@
             <div class="syncline">
               <span class="sdot" id="acctDot"></span><span id="acctTxt" role="status">Non connecté.</span>
             </div>
+            <div class="syncline hide" id="cloudLine">
+              <span class="sdot" id="cloudDot"></span><span id="cloudTxt" role="status"></span>
+            </div>
             <p class="muted small help" data-i18n="acctHelp">
-              Bientôt : tes séances et tes enregistrements MIDI seront sauvegardés avec ce compte. Pour l'instant, la
-              synchronisation passe encore par GitHub.
+              Une fois connecté, tes séances et tes statistiques de lecture sont sauvegardées avec ce compte et
+              synchronisées entre tes appareils. Les enregistrements MIDI suivront bientôt.
             </p>
             <form id="acctForm" novalidate>
               <label class="f mt10"
