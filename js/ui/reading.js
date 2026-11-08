@@ -125,6 +125,17 @@ const BLACK_AFTER = [0, 1, 3, 4, 5]; // black keys sit after C, D, F, G and A
 let slide = false,
   tappedBlack = -1;
 
+/**
+ * Width of the staff in SVG units for the space available. The staff is drawn at most 1.4
+ * screen pixels per unit (about right on a phone) and at most 28% of the screen height, so a
+ * wide window shows more notes instead of bigger ones.
+ */
+function streamWidth(box) {
+  const px = box.clientWidth || 360,
+    scale = Math.min(1.4, (window.innerHeight * 0.28) / 140);
+  return Math.max(260, Math.round(px / scale));
+}
+
 function renderRound() {
   const r = round,
     { clef, dn } = r.cur,
@@ -134,7 +145,7 @@ function renderRound() {
   const notes = r.queue.map((n, k) => ({ dn: n.dn, clef: n.clef, cls: k === 0 && fb ? (fb.ok ? "is-ok" : "is-bad") : "" }));
   const box = $("readStaff");
   box.textContent = "";
-  box.appendChild(stream(notes, { label: t("staffAria", clefName(clef)), slide }));
+  box.appendChild(stream(notes, { label: t("staffAria", clefName(clef)), slide, width: streamWidth(box) }));
   slide = false;
   const fbEl = $("readFb");
   fbEl.className = "read-fb" + (fb ? (fb.ok ? " ok" : " bad") : "");
@@ -260,12 +271,17 @@ on("rec", () => {
   if (state.view === "read" && read.prefs.midi) renderRead();
 });
 
+let resizeTimer = 0;
+window.addEventListener("resize", () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => round && renderRound(), 100);
+});
+
 export function initReading() {
   $("readStart").addEventListener("click", async () => {
     startRound();
     renderRead();
     if (read.prefs.midi) await ensureMidi();
-    $("readKeys").querySelector("button")?.focus({ preventScroll: true });
   });
   $("readSkip").addEventListener("click", () => {
     tappedBlack = -1;
