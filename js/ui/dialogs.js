@@ -1,6 +1,7 @@
 // Toasts, confirmation dialog, settings sheet and "new activity" modal.
 import { $ } from "../util.js";
 import { t } from "../i18n.js";
+import { emit } from "../bus.js";
 
 // ---------- toast ----------
 let toastTimer,
@@ -61,7 +62,7 @@ function closeAsk(value) {
 // ---------- settings sheet & new-activity modal ----------
 export const isOpen = (id) => !$(id).classList.contains("hide");
 function lockScroll() {
-  const anyOverlay = ["settings", "allSess", "editDlg", "newAct", "unlockDlg", "focus", "readRun"].some(isOpen);
+  const anyOverlay = ["settings", "allSess", "editDlg", "newAct", "unlockDlg", "focus", "readRun", "tempoDlg"].some(isOpen);
   document.body.classList.toggle("noscroll", anyOverlay);
 }
 export function openSheet() {
@@ -170,6 +171,10 @@ export function closeTopOverlay() {
   }
   if (isOpen("unlockDlg")) {
     closeUnlock();
+    return true;
+  }
+  if (isOpen("tempoDlg")) {
+    emit("closeTempo");
     return true;
   }
   if (isOpen("editDlg")) {

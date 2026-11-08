@@ -309,6 +309,12 @@ function clipItem(c, label) {
         audio.src = u;
         li.appendChild(audio);
       }
+      if (isMidi) {
+        const tb = el("button", "cliplink", t("tempoBtn"));
+        tb.type = "button";
+        tb.addEventListener("click", () => actions.openTempo(blob, label));
+        li.appendChild(tb);
+      }
       const a = el("a", "", isMidi ? t("dlMid") : t("dl"));
       a.href = u;
       a.download =

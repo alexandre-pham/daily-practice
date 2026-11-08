@@ -203,6 +203,14 @@
             <div class="subhead" data-i18n="timeOfDay">Moment de la journée</div>
             <div class="hbar" id="byTime"></div>
           </details>
+          <section class="card sec tempo-sec" id="tempoSec">
+            <h2 data-i18n="tempoSecT">Tempo d'un enregistrement</h2>
+            <p class="muted small" data-i18n="tempoSecB">
+              Réécoute un enregistrement MIDI et vois, pendant qu'il joue, à quel tempo joue chaque main.
+            </p>
+            <button class="btn2" id="tempoOpen" type="button" data-i18n="tempoOpen">Ouvrir un fichier MIDI</button>
+            <input class="hide" id="tempoFile" type="file" accept=".mid,.midi,audio/midi,audio/x-midi" />
+          </section>
         </div>
         <div id="viewRead" class="hide">
           <section class="card read-setup" id="readSetup">
@@ -409,6 +417,70 @@
             </label>
             <button class="primary cta" id="finishBtn" data-i18n="finishSess">Terminer la séance</button>
             <button class="linkbtn" id="cancelBtn" data-i18n="cancelSess">Annuler la séance</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="hide" id="tempoDlg">
+        <div class="backdrop" id="tempoBg"></div>
+        <div class="sheet tempo" role="dialog" aria-modal="true" aria-labelledby="tempoTitle">
+          <div class="in">
+            <div class="grab"></div>
+            <div class="hd">
+              <h2 id="tempoTitle" data-i18n="tempoT">Tempo</h2>
+              <button class="linkbtn closebtn" id="tempoClose" type="button" data-i18n="close">Fermer</button>
+            </div>
+            <p class="muted small" id="tempoSrc"></p>
+            <p class="dlg-err hide" id="tempoErr" role="alert"></p>
+            <div class="hide" id="tempoBody">
+              <div class="thands">
+                <div class="thand l" id="tHandL">
+                  <span class="nm"><i></i><span data-i18n="handL">Main gauche</span></span>
+                  <b id="tvL">—</b>
+                  <span class="dv" id="tdL"></span>
+                </div>
+                <div class="thand r" id="tHandR">
+                  <span class="nm"><i></i><span data-i18n="handR">Main droite</span></span>
+                  <b id="tvR">—</b>
+                  <span class="dv" id="tdR"></span>
+                </div>
+              </div>
+              <div class="tchart"><canvas id="tCanvas" tabindex="0" role="img"></canvas></div>
+              <div class="tctl">
+                <button class="iconbtn round" id="tBack" type="button" data-i18n-aria="tempoBack" aria-label="Reculer de 5 secondes">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M4 12a8 8 0 1 0 2.3-5.6" /><path d="M4 4v4h4" />
+                  </svg>
+                </button>
+                <button class="btn tplay" id="tPlay" type="button" aria-pressed="false">
+                  <svg class="i-play" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12-7.5z" /></svg>
+                  <svg class="i-pause" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6.5 4.5h4v15h-4zM13.5 4.5h4v15h-4z" /></svg>
+                  <span id="tPlayTxt">Écouter</span>
+                </button>
+                <span class="tclock" id="tClock">0:00 / 0:00</span>
+              </div>
+              <div class="tset">
+                <div>
+                  <div class="tl" data-i18n="tempoSpeed">Vitesse d'écoute</div>
+                  <div class="chips" id="tRate" role="group" data-i18n-aria="tempoSpeed" aria-label="Vitesse d'écoute">
+                    <button class="chip" type="button" data-rate="0.5">0,5×</button>
+                    <button class="chip" type="button" data-rate="0.75">0,75×</button>
+                    <button class="chip" type="button" data-rate="1">1×</button>
+                  </div>
+                </div>
+                <div>
+                  <div class="tl"><span data-i18n="tempoRefL">Tempo de référence (BPM)</span> <span id="tRefVal"></span></div>
+                  <div class="chips">
+                    <button class="chip" type="button" id="tRefMinus" data-i18n-aria="slower" aria-label="Plus lent">−1</button>
+                    <button class="chip" type="button" id="tRefPlus" data-i18n-aria="faster" aria-label="Plus rapide">+1</button>
+                    <button class="chip" type="button" id="tRefHalf">÷2</button>
+                    <button class="chip" type="button" id="tRefDouble">×2</button>
+                  </div>
+                  <p class="muted small tnote" id="tRefNote"></p>
+                </div>
+              </div>
+              <p class="muted small" data-i18n="tempoHint"></p>
+            </div>
           </div>
         </div>
       </div>

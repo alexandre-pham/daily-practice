@@ -71,6 +71,7 @@ import {
   flashBeat,
 } from "./ui/render.js";
 import { initReading } from "./ui/reading.js";
+import { initTempo, openTempo } from "./ui/tempo.js";
 
 // ---------- actions used by dynamically rendered elements ----------
 setActions({
@@ -100,6 +101,9 @@ setActions({
     $("edTimes").classList.toggle("hide", !times);
     if (times) $("edTimes").textContent = t("recordedAt", fmt.time.format(s.start), fmt.time.format(s.end));
     openEdit();
+  },
+  openTempo(blob, label) {
+    openTempo(blob, label);
   },
   deleteSession(s) {
     const undo = removeWithUndo({ entries: [s.key] });
@@ -536,6 +540,7 @@ setInterval(() => {
 // ---------- start ----------
 initDialogs();
 initReading();
+initTempo();
 load();
 applyStatic();
 renderAll();
