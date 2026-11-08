@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; media-src blob:; connect-src 'self' https://api.github.com https://gist.githubusercontent.com; base-uri 'none'; form-action 'none'; object-src 'none'; require-trusted-types-for 'script'; trusted-types 'none'"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; media-src blob:; connect-src 'self' https://api.github.com https://gist.githubusercontent.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; base-uri 'none'; form-action 'none'; object-src 'none'; require-trusted-types-for 'script'; trusted-types 'none'"
     />
     <meta name="referrer" content="no-referrer" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -527,6 +527,19 @@
               </div>
               <div class="btns"><button class="btn2" id="sSave" type="submit" data-i18n="save">Enregistrer</button></div>
             </form>
+
+            <h3 data-i18n="acctH">Compte Google</h3>
+            <div class="syncline">
+              <span class="sdot" id="acctDot"></span><span id="acctTxt">Non connecté.</span>
+            </div>
+            <p class="muted small help" data-i18n="acctHelp">
+              Bientôt : tes séances et tes enregistrements MIDI seront sauvegardés avec ce compte. Pour l'instant, la
+              synchronisation passe encore par GitHub.
+            </p>
+            <div class="btns">
+              <button class="btn" id="gIn" type="button" data-i18n="acctSignIn">Se connecter avec Google</button>
+              <button class="btn2 hide" id="gOut" type="button" data-i18n="acctSignOut">Se déconnecter</button>
+            </div>
 
             <h3 data-i18n="syncH">Synchronisation GitHub</h3>
             <div class="syncline">

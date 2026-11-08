@@ -72,6 +72,7 @@ import {
 } from "./ui/render.js";
 import { initReading } from "./ui/reading.js";
 import { initTempo, openTempo } from "./ui/tempo.js";
+import { initAccount } from "./ui/account.js";
 
 // ---------- actions used by dynamically rendered elements ----------
 setActions({
@@ -541,6 +542,7 @@ initDialogs();
 initReading();
 initTempo();
 load();
+initAccount();
 applyStatic();
 renderAll();
 initSync().then(() => {
