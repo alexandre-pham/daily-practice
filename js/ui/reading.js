@@ -126,13 +126,14 @@ let slide = false,
   tappedBlack = -1;
 
 /**
- * Width of the staff in SVG units for the space available. The staff is drawn at most 1.4
- * screen pixels per unit (about right on a phone) and at most 28% of the screen height, so a
- * wide window shows more notes instead of bigger ones.
+ * Width of the staff in SVG units for the space available, so a bigger window shows more notes
+ * rather than bigger ones. On a phone the staff is drawn at up to 1.4 screen pixels per unit and
+ * 28% of the screen height; on a wider window at up to 1 pixel per unit and 20% of the height.
  */
 function streamWidth(box) {
-  const px = box.clientWidth || 360,
-    scale = Math.min(1.4, (window.innerHeight * 0.28) / 140);
+  const wide = window.innerWidth >= 600,
+    px = box.clientWidth || 360,
+    scale = Math.min(wide ? 1 : 1.4, (window.innerHeight * (wide ? 0.2 : 0.28)) / 140);
   return Math.max(260, Math.round(px / scale));
 }
 
