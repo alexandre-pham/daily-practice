@@ -1430,6 +1430,27 @@ details summary {
   background: color-mix(in srgb, var(--surface) 85%, #fff);
 }
 
+/* reading round on a computer: the staff uses the width, the keyboard and button stay compact */
+@media (min-width: 700px) {
+  .readfs .in {
+    max-width: 1040px;
+    padding-left: 32px;
+    padding-right: 32px;
+  }
+  .read-stage {
+    margin-right: 0;
+  }
+  .readfs .piano {
+    width: min(100%, 600px);
+    height: clamp(140px, 26vh, 230px);
+    margin: 0 auto;
+  }
+  .read-skip {
+    max-width: 360px;
+    align-self: center;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .bar > i {
     transition: none;

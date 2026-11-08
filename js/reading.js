@@ -109,7 +109,7 @@ export let round = null;
 /** The last finished round's summary, shown until the next one starts. */
 export let lastResult = null;
 
-const AHEAD = 9; // notes generated ahead of the current one, so the staff always runs off the edge
+const AHEAD = 24; // notes generated ahead of the current one, so the staff runs off the edge even on a wide screen
 const SWITCH = 0.4; // with both clefs, chance of a clef change once the current clef has had 2 notes
 
 /** Clef for the next note: keeps at least 2 notes per clef, so changes stay readable. */
