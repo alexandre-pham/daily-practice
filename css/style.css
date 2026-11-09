@@ -1485,7 +1485,7 @@ details summary {
   }
   main,
   .mini .in {
-    max-width: 1360px;
+    max-width: 1680px;
     padding-left: 40px;
     padding-right: 40px;
   }
@@ -1565,6 +1565,39 @@ details summary {
   #readHistSec {
     grid-area: hist;
   }
+
+  #viewRecs:not(.hide) {
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) minmax(320px, 1fr);
+    column-gap: 36px;
+    align-items: start;
+  }
+  #viewRecs .tempo-sec {
+    margin-top: 18px;
+    position: sticky;
+    top: 24px;
+  }
+}
+
+/* tablets and small windows: wider than a phone, still one column with the bottom tab bar */
+@media (min-width: 700px) and (max-width: 959px) {
+  main,
+  .mini .in,
+  .tabbar .in {
+    max-width: 760px;
+  }
+  main,
+  .mini .in {
+    padding-left: 28px;
+    padding-right: 28px;
+  }
+  .focus:not(.readfs) .in,
+  .sheet .in {
+    max-width: 680px;
+  }
+  #viewStats .kpis {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 
 /* session in progress on a computer: timer and recording on the left, metronome and notes on the right */
@@ -1611,6 +1644,10 @@ details summary {
   .sheet .in {
     max-width: none;
     padding: 10px 32px 28px;
+  }
+  /* the tempo chart deserves the room */
+  .sheet.tempo {
+    width: min(1120px, calc(100vw - 64px));
   }
 }
 
