@@ -39,6 +39,9 @@ async function load() {
       });
       await auth.authStateReady();
       fb = { app, auth, api };
+      // The first auth callback fires while the session is being restored, before `fb` is set,
+      // so code reacting to it (the sync) couldn't see the user yet: announce the account again.
+      if (auth.currentUser) set({ status: "in", email: auth.currentUser.email || "", error: "" });
       return fb;
     })().catch((e) => {
       loading = null;
