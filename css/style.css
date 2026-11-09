@@ -843,7 +843,7 @@ details summary {
   max-width: 520px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
 }
 .tabbar button {
   min-height: 60px;
@@ -1741,6 +1741,46 @@ details summary {
     grid-template-columns: auto 1fr;
     gap: 28px;
   }
+}
+
+/* ---- recordings view ---- */
+.recs-sec h2 {
+  margin: 0 0 4px;
+}
+.recs-sec #recsInfo {
+  margin: 0 0 4px;
+}
+.rec-month {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin: 22px 0 0;
+  font-weight: 600;
+}
+.reclist .where {
+  font-size: 0.88rem;
+}
+.reclist li.unavailable .recacts {
+  opacity: 0.55;
+}
+.recacts {
+  display: flex;
+  gap: 18px;
+  margin-top: 2px;
+}
+.recname {
+  width: 100%;
+  font: inherit;
+  font-weight: 600;
+  padding: 6px 8px;
+  border: 1px solid var(--felt);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+}
+#viewRecs .tempo-sec {
+  margin-top: 28px;
 }
 
 /* ---- utilities (replace former inline styles) ---- */

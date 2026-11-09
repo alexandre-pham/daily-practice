@@ -74,9 +74,11 @@ import { initReading } from "./ui/reading.js";
 import { initTempo, openTempo } from "./ui/tempo.js";
 import { initAccount } from "./ui/account.js";
 import { initCloudSync } from "./cloud-sync.js";
+import { initCloudRecs } from "./cloud-recs.js";
+import { initRecordings } from "./ui/recordings.js";
 
 // ---------- actions used by dynamically rendered elements ----------
-setActions({
+const actions = {
   pickActivity(id) {
     state.cur = id;
     saveCur();
@@ -118,7 +120,8 @@ setActions({
       duration: UNDO_DURATION,
     });
   },
-});
+};
+setActions(actions);
 
 // ---------- activity menu ----------
 function openMenu() {
@@ -152,6 +155,11 @@ $("tabStats").addEventListener("click", () => {
 });
 $("tabRead").addEventListener("click", () => {
   state.view = "read";
+  renderAll();
+  window.scrollTo(0, 0);
+});
+$("tabRecs").addEventListener("click", () => {
+  state.view = "recs";
   renderAll();
   window.scrollTo(0, 0);
 });
@@ -544,6 +552,8 @@ initReading();
 initTempo();
 load();
 initCloudSync();
+initCloudRecs();
+initRecordings(actions);
 initAccount();
 applyStatic();
 renderAll();

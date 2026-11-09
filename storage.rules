@@ -1,0 +1,16 @@
+rules_version = '2';
+
+// Each signed-in user can only read and write their own MIDI recordings, at
+// users/{their uid}/recordings/{id}.mid. Paste this in the Firebase console:
+// Storage → Rules → Publish.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /users/{userId}/recordings/{file} {
+      allow read, delete: if request.auth != null && request.auth.uid == userId;
+      allow create, update: if request.auth != null && request.auth.uid == userId
+        && file.matches('c[A-Za-z0-9_-]{1,64}[.]mid')
+        && request.resource.contentType == 'audio/midi'
+        && request.resource.size < 2 * 1024 * 1024;
+    }
+  }
+}

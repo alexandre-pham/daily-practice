@@ -3,6 +3,8 @@
 // Data model (synced to the gist):
 //   acts:    { id: {name, goal, t, created} | {deleted: true, t} }
 //   entries: { "act/YYYY-MM-DD/sid": {min, note, start?, end?, pause?, bpm?, clips?, t} | {deleted: true, t} }
+//            clips: [{id, at, dur, mime, notes, name?, cloud?}]  recordings made during the session;
+//            the files themselves are in IndexedDB (and in Cloud Storage once `cloud` is set)
 //   read:    { notes:  { "t30": {n, acc, ms, t} }            note-reading stats, one record per clef and note
 //              rounds: { rid: {clef, level, n, ok, ms, t} } }  finished note-reading rounds
 // Every record carries a timestamp `t`; when two devices disagree, the most recent record wins.
@@ -58,6 +60,8 @@ function cleanClip(c) {
     dur: num(c.dur, 0, 1e6),
     mime: str(c.mime, 100),
     notes: num(c.notes, 0, 1e7),
+    name: str(c.name, 80) || undefined,
+    cloud: c.cloud === true || undefined,
   });
 }
 
@@ -339,4 +343,29 @@ export function sumRange(tot, start, n) {
 export function weekMinutes(tot) {
   const now = new Date();
   return sumRange(tot, weekStart(now), ((now.getDay() + 6) % 7) + 1);
+}
+
+// ---------- recordings ----------
+/** Recordings of the live sessions of an activity, newest first: [{clip, key, day}] */
+export function recordings(actId = state.cur) {
+  const out = [];
+  sessions(actId).forEach((s) => (s.clips || []).forEach((c) => out.push({ clip: c, key: s.key, day: s.day })));
+  return out.sort((a, b) => (b.clip.at || 0) - (a.clip.at || 0));
+}
+
+/** Change one recording inside its session; the session's timestamp moves so the change syncs. */
+export function updateClip(key, id, fn) {
+  const e = state.data.entries[key];
+  if (!e || e.deleted || !e.clips) return false;
+  const i = e.clips.findIndex((c) => c.id === id);
+  if (i < 0) return false;
+  const clips = e.clips.slice(),
+    next = fn(Object.assign({}, clips[i]));
+  if (next) clips[i] = next;
+  else clips.splice(i, 1);
+  const entry = Object.assign({}, e, { t: Date.now() });
+  if (clips.length) entry.clips = clips;
+  else delete entry.clips;
+  state.data.entries[key] = entry;
+  return true;
 }

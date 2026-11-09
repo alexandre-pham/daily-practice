@@ -22,17 +22,19 @@ import { getClip, extOf } from "../clips.js";
 import { status as syncStatus, isConnected, isLocked, gistUrl } from "../sync.js";
 import { lockScroll } from "./dialogs.js";
 import { renderRead } from "./reading.js";
+import { renderRecs, recName, fileName, download } from "./recordings.js";
+import { clipBlob } from "../cloud-recs.js";
 
 let actions = {};
 export const setActions = (a) => {
   actions = a;
 };
 
-const ICON_EDIT = ["M12 20h9", "M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"];
-const ICON_DEL = ["M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"];
+export const ICON_EDIT = ["M12 20h9", "M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"];
+export const ICON_DEL = ["M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"];
 
 // Built with DOM calls, not innerHTML, so the CSP can enforce Trusted Types.
-function icon(paths) {
+export function icon(paths) {
   const NS = "http://www.w3.org/2000/svg",
     svg = document.createElementNS(NS, "svg");
   const attrs = {
@@ -112,7 +114,12 @@ function renderHeader() {
   menu.appendChild(add);
 }
 
-const VIEWS = { sess: ["tabSess", "viewSess"], stats: ["tabStats", "viewStats"], read: ["tabRead", "viewRead"] };
+const VIEWS = {
+  sess: ["tabSess", "viewSess"],
+  stats: ["tabStats", "viewStats"],
+  read: ["tabRead", "viewRead"],
+  recs: ["tabRecs", "viewRecs"],
+};
 function renderView() {
   for (const v in VIEWS) {
     const [tab, view] = VIEWS[v];
@@ -121,6 +128,7 @@ function renderView() {
   }
   if (state.view === "sess") renderSessions();
   else if (state.view === "stats") renderStats();
+  else if (state.view === "recs") renderRecs();
   else renderRead();
 }
 
@@ -288,13 +296,26 @@ export function syncChips() {
 function clipLabel(c, i, all) {
   const isMidi = c.mime === "audio/midi";
   const n = all.slice(0, i + 1).filter((x) => (x.mime === "audio/midi") === isMidi).length;
-  return (isMidi ? t("clipMidi") : t("clipAudio")) + n + " · " + fmtSec(c.dur) + (c.notes ? " · " + t("notes", c.notes) : "");
+  const head = isMidi && c.name ? recName(c) : (isMidi ? t("clipMidi") : t("clipAudio")) + n;
+  return head + " · " + fmtSec(c.dur) + (c.notes ? " · " + t("notes", c.notes) : "");
 }
 function clipItem(c, label) {
   const li = el("li");
   li.appendChild(el("span", "", label));
   getClip(c.id)
     .then((blob) => {
+      if (!blob && c.cloud && c.mime === "audio/midi") {
+        // Online only: fetched when used.
+        const open = (fn) => clipBlob(c).then((b) => (b ? fn(b) : null), () => li.appendChild(el("span", "small", t("unavailable"))));
+        const tb = el("button", "cliplink", t("tempoBtn"));
+        tb.type = "button";
+        tb.addEventListener("click", () => open((b) => actions.openTempo(b, label)));
+        const db = el("button", "cliplink", t("dlMid"));
+        db.type = "button";
+        db.addEventListener("click", () => open((b) => download(b, fileName(c))));
+        li.append(tb, db);
+        return;
+      }
       if (!blob) {
         li.appendChild(el("span", "small", t("elsewhere")));
         return;

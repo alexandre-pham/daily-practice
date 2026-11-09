@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data: https://www.google.com/images/cleardot.gif; media-src blob:; connect-src 'self' https://api.github.com https://gist.githubusercontent.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com; base-uri 'none'; form-action 'none'; object-src 'none'; require-trusted-types-for 'script'; trusted-types 'none'"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data: https://www.google.com/images/cleardot.gif; media-src blob:; connect-src 'self' https://firebasestorage.googleapis.com https://api.github.com https://gist.githubusercontent.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com; base-uri 'none'; form-action 'none'; object-src 'none'; require-trusted-types-for 'script'; trusted-types 'none'"
     />
     <meta name="referrer" content="no-referrer" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -203,6 +203,16 @@
             <div class="subhead" data-i18n="timeOfDay">Moment de la journée</div>
             <div class="hbar" id="byTime"></div>
           </details>
+        </div>
+        <div id="viewRecs" class="hide">
+          <section class="sec recs-sec">
+            <h2 data-i18n="recsT">Enregistrements</h2>
+            <p class="muted small" id="recsInfo"></p>
+            <p class="muted hide empty-line" id="recsEmpty" data-i18n="recsEmpty">
+              Aucun enregistrement MIDI pour l'instant : pendant une séance, touche « Enregistrer en MIDI ».
+            </p>
+            <div id="recsList"></div>
+          </section>
           <section class="card sec tempo-sec" id="tempoSec">
             <h2 data-i18n="tempoSecT">Tempo d'un enregistrement</h2>
             <p class="muted small" data-i18n="tempoSecB">
@@ -307,6 +317,22 @@
               <path d="M2 6h20M2 10h20M2 14h11M2 18h11" />
               <ellipse cx="18" cy="16" rx="3.4" ry="2.6" fill="currentColor" stroke="none" /></svg
             ><span data-i18n="tabRead">Lecture</span>
+          </button>
+          <button role="tab" id="tabRecs" aria-selected="false">
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="12" r="9" />
+              <circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none" /></svg
+            ><span data-i18n="tabRecs">Enregistrements</span>
           </button>
         </div>
       </nav>
@@ -536,8 +562,8 @@
               <span class="sdot" id="cloudDot"></span><span id="cloudTxt" role="status"></span>
             </div>
             <p class="muted small help" data-i18n="acctHelp">
-              Une fois connecté, tes séances et tes statistiques de lecture sont sauvegardées avec ce compte et
-              synchronisées entre tes appareils. Les enregistrements MIDI suivront bientôt.
+              Une fois connecté, tes séances, tes statistiques de lecture et tes enregistrements MIDI sont sauvegardés
+              avec ce compte et synchronisés entre tes appareils.
             </p>
             <form id="acctForm" novalidate>
               <label class="f mt10"
