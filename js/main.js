@@ -19,18 +19,6 @@ import {
   ensureActivity,
   updateSession,
 } from "./store.js";
-import {
-  sync,
-  initSync,
-  connect,
-  unlock,
-  lock,
-  disconnect,
-  isLocked,
-  hasLegacyToken,
-  PASS_MIN,
-  status as syncStatus,
-} from "./sync.js";
 import { startMidi, stopMidi, recInfo, refreshMessage } from "./recorder.js";
 import { metro, startSession, stopSession, cancelSession, togglePause, keepAwake, noteBpm } from "./session.js";
 import { BPM_MIN, BPM_MAX } from "./metronome.js";
@@ -45,9 +33,6 @@ import {
   initDialogs,
   closeTopOverlay,
   isOpen,
-  openUnlock,
-  closeUnlock,
-  showUnlockError,
   openAllSess,
   openEdit,
   closeEdit,
@@ -435,77 +420,6 @@ $("impFile").addEventListener("change", (e) => {
   reader.readAsText(file);
 });
 
-// ---------- sync ----------
-$("connectBox").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const token = $("token").value.trim(),
-    pass = $("pass").value;
-  if (!token) {
-    toast(t("pasteToken"));
-    $("token").focus();
-    return;
-  }
-  if (pass.length < PASS_MIN) {
-    toast(t("passShort", PASS_MIN));
-    $("pass").focus();
-    return;
-  }
-  $("token").value = "";
-  $("pass").value = "";
-  await connect(token, pass);
-  renderSync();
-});
-/** Validation message for an unlock passphrase, or "" when it can be tried. */
-function unlockPassError(pass) {
-  if (!pass) return t("needPass");
-  if (hasLegacyToken() && pass.length < PASS_MIN) return t("passShort", PASS_MIN); // first passphrase: being chosen now
-  return "";
-}
-$("unlockBox").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const pass = $("unlockPass").value,
-    err = unlockPassError(pass);
-  if (err) {
-    toast(err);
-    $("unlockPass").focus();
-    return;
-  }
-  $("unlockPass").value = "";
-  await unlock(pass);
-  renderSync();
-});
-$("unlockForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const pass = $("ulPass").value,
-    err = unlockPassError(pass);
-  if (err) {
-    showUnlockError(err);
-    $("ulPass").focus();
-    return;
-  }
-  $("ulOk").disabled = true;
-  showUnlockError("");
-  const ok = await unlock(pass);
-  $("ulOk").disabled = false;
-  renderSync();
-  if (!ok) {
-    showUnlockError(t(syncStatus.key, ...syncStatus.args));
-    $("ulPass").select();
-    return;
-  }
-  closeUnlock();
-  toast(t("unlocked"));
-});
-$("syncNow").addEventListener("click", sync);
-$("lockNow").addEventListener("click", () => {
-  lock();
-  renderSync();
-});
-$("disconnect").addEventListener("click", () => {
-  disconnect();
-  renderSync();
-});
-on("sync", renderSync);
 on("data", () => {
   ensureActivity();
   renderAll();
@@ -529,7 +443,6 @@ document.addEventListener("keydown", (e) => {
 });
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState !== "visible") return;
-  sync();
   keepAwake();
   if (state.view === "sess" && !isOpen("settings")) renderSessions(); // the date may have changed
 });
@@ -555,9 +468,15 @@ initCloudSync();
 initCloudRecs();
 initRecordings(actions);
 initAccount();
+on("cloudsync", renderSync);
+on("account", renderSync);
 applyStatic();
 renderAll();
-initSync().then(() => {
-  if (isLocked()) openUnlock(t(hasLegacyToken() ? "setPass" : "locked"));
-});
+// The gist sync is gone: drop what it left on this device (the encrypted GitHub token included).
+try {
+  localStorage.removeItem("suivi-piano-gist");
+  sessionStorage.removeItem("suivi-piano-unlock");
+} catch {
+  /* storage unavailable */
+}
 if (state.run) keepAwake();

@@ -219,7 +219,7 @@ export function initCloudSync() {
     if (account.status === "in") start();
     else if (account.status === "out" && uid) stop();
   });
-  // Local edits, and data arriving from the gist sync, are both pushed.
+  // Local edits and imports are pushed; data received from Firestore is already there.
   on("changed", () => schedule());
   on("data", () => schedule());
 }

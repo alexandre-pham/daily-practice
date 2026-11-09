@@ -1,6 +1,6 @@
 // Application state, persistence in localStorage, data migration and conflict-free merging.
 //
-// Data model (synced to the gist):
+// Data model (synced with Firestore, see cloud-sync.js):
 //   acts:    { id: {name, goal, t, created} | {deleted: true, t} }
 //   entries: { "act/YYYY-MM-DD/sid": {min, note, start?, end?, pause?, bpm?, clips?, t} | {deleted: true, t} }
 //            clips: [{id, at, dur, mime, notes, name?, cloud?}]  recordings made during the session;
@@ -28,7 +28,7 @@ export const state = {
 };
 
 // ---------- validation ----------
-// Data from imports and the gist is untrusted: keep only known fields with the expected types.
+// Data from imports and from Firestore is untrusted: keep only known fields with the expected types.
 const ID_RE = /^[\w-]{1,64}$/;
 const BAD_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 const isId = (s) => typeof s === "string" && ID_RE.test(s) && !BAD_KEYS.has(s);

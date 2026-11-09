@@ -19,7 +19,8 @@ import {
 import { activeMs, pausedMs, metro } from "../session.js";
 import { MIDI_OK, recInfo, message as recMessage } from "../recorder.js";
 import { getClip, extOf } from "../clips.js";
-import { status as syncStatus, isConnected, isLocked, gistUrl } from "../sync.js";
+import { account } from "../cloud.js";
+import { cloudStatus } from "../cloud-sync.js";
 import { lockScroll } from "./dialogs.js";
 import { renderRead } from "./reading.js";
 import { renderRecs, recName, fileName, download } from "./recordings.js";
@@ -586,28 +587,21 @@ export function renderSheet() {
   document.querySelectorAll("#langPick .chip").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lang === lang)));
 }
 
+/** Header dot: state of the account sync (grey when signed out). */
 export function renderSync() {
-  const on = isConnected(),
-    locked = isLocked(),
-    st = syncStatus;
-  $("connectBox").classList.toggle("hide", on);
-  $("unlockBox").classList.toggle("hide", !locked);
-  $("connectedBox").classList.toggle("hide", !on);
-  $("syncNow").classList.toggle("hide", locked);
-  $("lockNow").classList.toggle("hide", locked);
-  ["dot", "hdrDot"].forEach((id) => {
-    $(id).className = "sdot " + (st.state || "");
-  });
-  const box = $("syncTxt");
-  box.textContent = t(st.key, ...st.args);
-  if (st.key === "syncOk") {
-    box.append(" ");
-    const a = el("a", "", t("seeGist"));
-    a.href = gistUrl();
-    a.target = "_blank";
-    a.rel = "noopener noreferrer";
-    box.appendChild(a);
-  }
-  $("hdrDot").title = box.textContent;
-  $("hdrDot").setAttribute("aria-label", box.textContent);
+  const c = cloudStatus,
+    signedIn = account.status === "in";
+  const st = signedIn ? c.state : "";
+  $("hdrDot").className = "sdot " + (st === "ok" ? "ok" : st === "busy" ? "busy" : st === "err" ? "err" : "");
+  const label = !signedIn
+    ? t("acctOut")
+    : st === "ok"
+      ? t("cloudOk", fmt.time.format(new Date(c.at)))
+      : st === "busy"
+        ? t("cloudBusy")
+        : st === "err"
+          ? t("cloudErr_" + c.error)
+          : t("acctIn", account.email);
+  $("hdrDot").title = label;
+  $("hdrDot").setAttribute("aria-label", label);
 }
