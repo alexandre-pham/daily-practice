@@ -137,11 +137,12 @@ let slide = false,
 
 /**
  * Width of the staff in SVG units for the space available, so a bigger screen shows more notes
- * rather than bigger ones: at most 0.95 screen pixels per unit and 20% of the screen height.
+ * rather than bigger ones: at most 0.95 screen pixels per unit (1.35 on a computer, so a wide
+ * window shows bigger notes instead of an empty staff) and 20% of the screen height.
  */
 function streamWidth(box) {
   const px = box.clientWidth || 360,
-    scale = Math.min(0.95, (window.innerHeight * 0.2) / 140);
+    scale = Math.min(window.innerWidth >= 960 ? 1.35 : 0.95, (window.innerHeight * 0.2) / 140);
   return Math.max(260, Math.round(px / scale));
 }
 

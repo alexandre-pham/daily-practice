@@ -1450,24 +1450,29 @@ details summary {
 /* reading round on a computer: the staff uses the width, the keyboard and button stay compact */
 @media (min-width: 700px) {
   .readfs .in {
-    max-width: 1040px;
-    padding-left: 32px;
-    padding-right: 32px;
+    max-width: 1400px;
+    padding-left: 40px;
+    padding-right: 40px;
   }
   .read-stage {
     margin-right: 0;
   }
   .readfs .piano {
-    width: min(100%, 600px);
-    height: clamp(140px, 26vh, 230px);
+    width: min(100%, 1080px);
+    height: clamp(160px, 34vh, 360px);
     margin: 0 auto;
   }
   .readfs .piano.scroll {
     width: 100%;
   }
+  /* Keys as wide as the screen allows (up to about a real key's proportion), scrolling
+     only when the range doesn't fit at a comfortable size. */
+  .readfs .piano.scroll .keys {
+    width: max(min(100%, calc(var(--n) * 120px)), calc(var(--n) * 56px));
+  }
 
   .read-skip {
-    max-width: 360px;
+    max-width: 480px;
     align-self: center;
   }
 }
