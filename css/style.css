@@ -2366,3 +2366,55 @@ details summary {
     width: 100%;
   }
 }
+
+/* ---- timed exercises ---- */
+.pads {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  max-width: 640px;
+}
+.pad {
+  flex: 1;
+  min-height: 110px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--muted);
+  font: inherit;
+  font-weight: 600;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.pad.hit {
+  animation: padhit 0.18s ease-out;
+}
+@keyframes padhit {
+  from {
+    background: var(--felt-soft);
+    border-color: var(--felt);
+  }
+}
+.perf-go {
+  min-width: 160px;
+  min-height: 48px;
+  margin: 0 6px;
+}
+.exfs .ex-prompt {
+  min-height: 1.6em;
+}
+.tempo-val {
+  align-self: center;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  padding: 0 6px;
+}
+.perf-sum p {
+  margin: 4px 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pad.hit {
+    animation: none;
+  }
+}

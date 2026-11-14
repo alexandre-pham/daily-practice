@@ -175,12 +175,13 @@ function renderPane(ex) {
         ex.lengths.map((n) => chip(String(n), p.len === n, set("len", n))),
       ),
     );
-  card.appendChild(
-    group(t("namesL"), [
-      chip("Do Ré Mi", namesMode() === "solf", () => (setPref("names", "solf"), renderPane(ex)), { lang: "fr" }),
-      chip("C D E", namesMode() === "abc", () => (setPref("names", "abc"), renderPane(ex)), { lang: "en" }),
-    ]),
-  );
+  if (!ex.noNames)
+    card.appendChild(
+      group(t("namesL"), [
+        chip("Do Ré Mi", namesMode() === "solf", () => (setPref("names", "solf"), renderPane(ex)), { lang: "fr" }),
+        chip("C D E", namesMode() === "abc", () => (setPref("names", "abc"), renderPane(ex)), { lang: "en" }),
+      ]),
+    );
   if (MIDI_OK && !ex.noAnswerChoice)
     card.appendChild(
       group(
@@ -219,7 +220,11 @@ function renderPane(ex) {
     for (const h of rounds) {
       const li = el("li");
       const res = ex.kind === "perform" && h.cont !== undefined ? t("contShort", pct(h.cont)) + ", " + h.ok + "/" + h.n : h.ok + "/" + h.n;
-      li.append(el("span", "when", fmt.short.format(new Date(h.t))), el("span", "what muted", t("levelN", h.level) + (h.tempo ? ", ♩ = " + h.tempo : "")), el("span", "res", res));
+      li.append(
+        el("span", "when", fmt.short.format(new Date(h.t))),
+        el("span", "what muted", t("levelN", h.level) + (h.tempo ? ", ♩ = " + h.tempo : "")),
+        el("span", "res", res),
+      );
       ul.appendChild(li);
     }
     hs.appendChild(ul);

@@ -336,7 +336,9 @@ function drawVoice(g, v, evs, bar, clef, top, api) {
     const item = { e, x, hw, up, yLow: Math.max(...ys), yHigh: Math.min(...ys), eg, kind };
     items.push(item);
     if (e.label) {
-      const tx = node("text", { x: r(x + hw / 2), y: r(Math.min(top - 1.2 * S, Math.min(...ys) - (item.up ? STEM : 0) - 1.4 * S)), "text-anchor": "middle", class: "nlabel" }, eg);
+      // On a one-line rhythm staff the stems go up, so labels sit under the line.
+      const ly = clef === "p" ? top + 4 * S : Math.min(top - 1.2 * S, Math.min(...ys) - (item.up ? STEM : 0) - 1.4 * S);
+      const tx = node("text", { x: r(x + hw / 2), y: r(ly), "text-anchor": "middle", class: "nlabel" }, eg);
       tx.textContent = e.label;
     }
   }

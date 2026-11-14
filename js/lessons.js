@@ -297,6 +297,88 @@ export const LESSONS = [
       },
     ],
   },
+  {
+    id: "countBeats",
+    title: { fr: "Compter les temps", en: "Counting the beats" },
+    blocks: [
+      {
+        type: "p",
+        text: {
+          fr: "Le chiffre du haut de la mesure dit combien de temps il y a dans chaque mesure : 4/4, quatre noires ; 3/4, trois noires ; 2/4, deux noires. La barre de mesure sépare les groupes.",
+          en: "The top number of the time signature says how many beats each bar holds: 4/4, four quarter notes; 3/4, three; 2/4, two. Barlines separate the groups.",
+        },
+      },
+      {
+        type: "p",
+        text: {
+          fr: "Compte à voix haute en jouant : « 1, 2, 3, 4 ». Le « 1 » de chaque mesure est un peu plus fort ; c'est le clic aigu du métronome.",
+          en: "Count aloud as you play: “1, 2, 3, 4”. The “1” of each bar is a little stronger; it's the metronome's higher click.",
+        },
+      },
+      { type: "staff", score: { staves: [{ clef: "p" }], time: [3, 4], voices: [{ staff: 0, events: [q(N(24)), q(N(24)), q(N(24)), q(N(24), 2), q(N(24))] }] }, caption: { fr: "3/4 : 1 2 3 | 1 – 3", en: "3/4: 1 2 3 | 1 – 3" } },
+    ],
+  },
+  {
+    id: "noteValues",
+    title: { fr: "Les figures de notes", en: "Note values" },
+    blocks: [
+      {
+        type: "list",
+        items: [
+          { fr: "Ronde : 4 temps. Blanche : 2 temps. Noire : 1 temps.", en: "Whole note: 4 beats. Half note: 2 beats. Quarter note: 1 beat." },
+          { fr: "Croche : ½ temps (deux croches font une noire, souvent reliées par une barre). Double croche : ¼ de temps.", en: "Quaver: ½ beat (two quavers make a quarter, often joined by a beam). Semiquaver: ¼ beat." },
+          { fr: "Le point ajoute la moitié de la valeur : blanche pointée = 3 temps, noire pointée = 1 temps ½.", en: "A dot adds half the value: dotted half = 3 beats, dotted quarter = 1½ beats." },
+          { fr: "Chaque figure a son silence de même durée : pause, demi-pause, soupir, demi-soupir.", en: "Each value has a rest of the same length: whole, half, quarter and quaver rests." },
+          { fr: "Une liaison entre deux notes identiques : on ne rejoue pas la seconde, on la tient.", en: "A tie between two identical notes: don't play the second one, hold it." },
+        ],
+      },
+      { type: "staff", score: { staves: [{ clef: "p" }], time: [4, 4], voices: [{ staff: 0, events: [q(N(24), 2), q(N(24)), q(N(24), 0.5), q(N(24), 0.5), q(N(24), 1.5), q(N(24), 0.5), { d: 1, rest: true, notes: [] }, q(N(24))] }] }, caption: { fr: "Blanche, noire, deux croches | noire pointée, croche, soupir, noire", en: "Half, quarter, two quavers | dotted quarter, quaver, rest, quarter" } },
+    ],
+  },
+  {
+    id: "rhythmCells",
+    title: { fr: "Les cellules rythmiques courantes", en: "Common rhythm cells" },
+    blocks: [
+      {
+        type: "p",
+        text: {
+          fr: "Comme on lit des mots et pas des lettres, on lit des groupes d'un ou deux temps plutôt que des notes une par une. Une dizaine de cellules reviennent sans cesse ; reconnais-les d'un coup d'œil.",
+          en: "Just as you read words rather than letters, read groups of one or two beats rather than single notes. A dozen cells come back all the time; recognise them at a glance.",
+        },
+      },
+      {
+        type: "list",
+        items: [
+          { fr: "« ti-ti » : deux croches sur un temps.", en: "“ti-ti”: two quavers on one beat." },
+          { fr: "« taa – ti » : noire pointée puis croche, sur deux temps : la croche tombe juste avant le temps suivant.", en: "“taa – ti”: dotted quarter then quaver over two beats: the quaver falls just before the next beat." },
+          { fr: "« ti – ta – ti » : croche, noire, croche : la syncope, l'accent tombe entre les temps.", en: "“ti – ta – ti”: quaver, quarter, quaver: syncopation, the accent falls between the beats." },
+          { fr: "« ti-ri-ti-ri » : quatre doubles croches sur un temps.", en: "“ti-ri-ti-ri”: four semiquavers on one beat." },
+        ],
+      },
+      { type: "staff", score: { staves: [{ clef: "p" }], time: [4, 4], voices: [{ staff: 0, events: [q(N(24), 0.5), q(N(24), 0.5), q(N(24), 0.25), q(N(24), 0.25), q(N(24), 0.25), q(N(24), 0.25), q(N(24), 1.5), q(N(24), 0.5), q(N(24), 0.5), q(N(24)), q(N(24), 0.5), q(N(24), 2)] }] }, caption: { fr: "ti-ti, ti-ri-ti-ri, taa – ti, ti – ta – ti", en: "ti-ti, ti-ri-ti-ri, taa – ti, ti – ta – ti" } },
+    ],
+  },
+  {
+    id: "keepPulse",
+    title: { fr: "Garder la pulsation", en: "Keeping the pulse" },
+    blocks: [
+      {
+        type: "p",
+        text: {
+          fr: "En lecture à vue, la règle d'or : ne jamais s'arrêter. Une note fausse passe inaperçue ; un arrêt casse la musique et fait perdre sa place sur la partition.",
+          en: "The golden rule of sight-reading: never stop. A wrong note goes unnoticed; a stop breaks the music and loses your place on the page.",
+        },
+      },
+      {
+        type: "list",
+        items: [
+          { fr: "Choisis un tempo assez lent pour tout jouer sans t'arrêter.", en: "Pick a tempo slow enough to play everything without stopping." },
+          { fr: "Si tu rates une note, laisse-la et rattrape le temps suivant.", en: "If you miss a note, let it go and catch the next beat." },
+          { fr: "Le métronome ne t'attend pas : c'est voulu, comme un partenaire qui joue avec toi.", en: "The metronome won't wait for you: that's the point, like a partner playing with you." },
+        ],
+      },
+    ],
+  },
 ];
 
 export const lessonById = (id) => LESSONS.find((l) => l.id === id);
