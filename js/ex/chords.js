@@ -73,14 +73,16 @@ function question(level, p, prev) {
     const r = { dn: c.root.dn + d, acc: 0 };
     wrong.push(chordSymbol(N, r, pickOne(["maj", "min"])));
   }
+  // Three ways to work: play it from the page, play it with its name shown, or name it.
+  const mode = p.mode || "play";
   return {
-    item: c.item,
+    item: c.item + (mode === "name" ? ":n" : ""),
     sc,
     maxW: 300,
     label: names(c.notes),
-    prompt: t("chords_prompt"),
-    promptChoices: t("chords_ask"),
-    expect: { kind: "chord" },
+    prompt: mode === "named" ? t("chords_promptNamed", symFull) : mode === "name" ? t("chords_ask") : t("chords_prompt"),
+    promptChoices: mode === "named" ? t("chords_promptNamed", symFull) + " — " + t("chords_ask") : t("chords_ask"),
+    expect: mode === "name" ? { kind: "none" } : { kind: "chord" },
     judge: (got) => {
       if (L.exact) return { ok: sameSet(got, exact), exactMiss: sameSet(pcSet(got), want) };
       return { ok: sameSet(pcSet(got), want) };
@@ -97,7 +99,7 @@ function question(level, p, prev) {
 }
 
 function itemLabel(key) {
-  const [, clef, sym, inv] = key.split(":");
+  const [, clef, sym, inv, named] = key.split(":");
   const N = NAMES(),
     m = sym.match(/^([A-G])(##|#|bb|b)?(.*)$/);
   if (!m) return sym;
@@ -105,7 +107,7 @@ function itemLabel(key) {
   const q = { "": "maj", m: "min", dim: "dim", aug: "aug", 7: "dom7" }[m[3]] || "maj";
   const name = chordSymbol(N, { dn: "CDEFGAB".indexOf(m[1]), acc }, q);
   const where = clef === "g" ? t("grandStaff") : t(clef === "t" ? "clefNameT" : "clefNameB");
-  return name + (inv !== "0" ? " (" + t("invN", Number(inv)) + ")" : "") + " · " + where;
+  return name + (inv !== "0" ? " (" + t("invN", Number(inv)) + ")" : "") + " · " + where + (named ? " · " + t("chords_modeName") : "");
 }
 
 export default {
@@ -116,9 +118,19 @@ export default {
   thr: 3500,
   lengths: [10, 20, 40],
   lengthLabel: "qLenL",
-  defaults: { clef: "t" },
+  defaults: { clef: "t", mode: "play" },
   lessons: ["buildChord", "chordShapes", "inversions"],
-  options: () => [
+  options: (p) => [
+    {
+      key: "mode",
+      label: "modeL",
+      values: [
+        { v: "play", label: "chords_modePlay" },
+        { v: "named", label: "chords_modeNamed" },
+        { v: "name", label: "chords_modeName" },
+      ],
+      hint: () => "chords_mode_" + (p.mode || "play") + "H",
+    },
     {
       key: "clef",
       label: "clefL",

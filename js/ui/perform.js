@@ -4,22 +4,26 @@
 // After a count-in bar of clicks, a cursor moves through the score in step with the metronome.
 // Every key press (MIDI piano, the on-screen pad, or the keyboard) is placed on the same clock
 // as the clicks (see js/sound.js), corrected by the measured latency, and matched with the
-// nearest expected attack within ±120 ms: within ±60 ms it is "in time", else early or late.
+// nearest expected attack within a window (±150 ms by default): within ±80 ms it is "in time",
+// else early or late. The tolerance can be made stricter or more relaxed in the settings.
 import { $, el } from "../util.js";
 import { on } from "../bus.js";
 import { t } from "../i18n.js";
 import { registerRunner, shell, fitWidth, fitScale, midiMode, midiHint, button, showResult, openPanel, closePanel } from "./exrun.js";
 import { score } from "./score.js";
 import { audio, click, hush, audioAt, heardNow } from "../sound.js";
-import { recordSkill, addRound, latency, setLatency, tempoOf, setTempo } from "../exercises.js";
+import { recordSkill, addRound, latency, setLatency, setTempo, tolMs, calibrated } from "../exercises.js";
+import { read } from "../reading.js";
+import { MIDI_OK, ensureMidi } from "../recorder.js";
 
-const GOOD_MS = 60,
-  WINDOW_MS = 120,
-  LEAD_S = 0.3; // time between pressing "ready" and the first click
+const LEAD_S = 0.3; // time between pressing "ready" and the first click
+let GOOD_MS = 80,
+  WINDOW_MS = 150;
 
 let P = null; // the running timed exercise
 
 registerRunner("perform", (ex, opts) => {
+  [GOOD_MS, WINDOW_MS] = tolMs();
   P = {
     ex,
     opts,
@@ -110,8 +114,9 @@ function fitStage() {
 
 function inputHint() {
   const two = P.piece.twoHands;
-  if (midiMode()) return midiHint() + " " + t(two ? "perf_midi2" : "perf_midi1");
-  return t(two ? "perf_keys2" : "perf_keys1");
+  const cal = calibrated() ? "" : " " + t("perf_notCal");
+  if (midiMode()) return midiHint() + " " + t(two ? "perf_midi2" : "perf_midi1") + cal;
+  return t(two ? "perf_keys2" : "perf_keys1") + cal;
 }
 
 /** Big tap areas for playing without a piano (and for touch screens). */
@@ -323,7 +328,8 @@ document.addEventListener("keydown", (e) => {
 let cal = null;
 
 /** Measure the delay between a click heard and a key played: 8 clicks, the median difference. */
-export function startCalibration(onDone) {
+export async function startCalibration(onDone) {
+  if (read.prefs.midi && MIDI_OK) await ensureMidi();
   openPanel();
   cal = { phase: "idle", taps: [], onDone };
   cal.ui = shell(t("calT"), () => {
@@ -354,7 +360,7 @@ function calScreen(msg) {
   const go = button(t("perf_go"), "btn perf-go", calRun);
   u.actions.appendChild(go);
   go.focus();
-  u.hint.textContent = t("calHint", latency());
+  u.hint.textContent = t("calHint", latency()) + " " + t(read.prefs.midi && MIDI_OK ? "calPiano" : "calNoPiano");
   u.fill.style.width = "0";
   u.prog.textContent = "";
 }

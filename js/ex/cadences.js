@@ -19,6 +19,8 @@ const LEVELS = [
 ];
 /** Circle of fifths, for "all keys": C G D A E B F♯ then the flat side. */
 const CYCLE = [0, 1, 2, 3, 4, 5, 6, -5, -4, -3, -2, -1];
+/** Statistics are kept apart for each way of working on a progression. */
+const SUFFIX = { play: "", cycle: "", recog: ":r", read: ":p" };
 const keyCode = (f) => (f === 0 ? "0" : Math.abs(f) + (f > 0 ? "s" : "f"));
 const keyName = (f) => t("keyMajor", noteLabel(tonic(f)));
 export const progLabel = (code) => PROGS[code].map((d) => ROMAN[d - 1]).join(" – ");
@@ -61,7 +63,7 @@ function question(level, p, prev) {
   }
   const cands = [];
   const progs = p.prog && PROGS[p.prog] && L.progs.includes(p.prog) ? [p.prog] : L.progs;
-  for (const c of progs) for (const k of L.keys) cands.push({ code: c, f: k, item: "cad:" + c + ":" + keyCode(k) + (mode === "recog" ? ":r" : "") });
+  for (const c of progs) for (const k of L.keys) cands.push({ code: c, f: k, item: "cad:" + c + ":" + keyCode(k) + SUFFIX[mode] });
   const pick = pickByWeight(
     cands.filter((x) => !prev || x.item !== prev.item),
     9000,
@@ -77,7 +79,7 @@ function build(code, f, mode, cycleI) {
   const chords = degs.map((d) => chordOnDegree(f, d, degreeRoot(f, d, 28)));
   const syms = chords.map((c) => chordSymbol(N, c[0], qualityOf(c)));
   const reveal = keyName(f) + " : " + syms.join(" – ");
-  const item = "cad:" + code + ":" + keyCode(f) + (mode === "recog" ? ":r" : "");
+  const item = "cad:" + code + ":" + keyCode(f) + SUFFIX[mode];
   if (mode === "recog") {
     const v = voiceProg(f, degs);
     return {
@@ -98,17 +100,34 @@ function build(code, f, mode, cycleI) {
     };
   }
   const prompt = keyName(f) + " : " + degs.map((d) => ROMAN[d - 1]).join(" – ");
+  // Read and play: the progression is written on the grand staff, chord by chord.
+  const written = mode === "read" ? voiceProg(f, degs) : null;
   return {
     item,
     cycleI,
-    sc: { staves: [{ clef: "t" }], key: f, voices: [] },
-    maxW: 260,
-    prompt,
+    sc: written
+      ? {
+          staves: [{ clef: "t" }, { clef: "b" }],
+          key: f,
+          voices: [
+            { staff: 0, events: written.map((c) => ({ d: 4, notes: c.rh })) },
+            { staff: 1, events: written.map((c) => ({ d: 4, notes: [c.bass] })) },
+          ],
+        }
+      : { staves: [{ clef: "t" }], key: f, voices: [] },
+    maxW: written ? 0 : 260,
+    prompt: written ? t("cad_readPrompt", keyName(f)) : prompt,
     promptChoices: prompt + " ?",
     hint: t("cad_playHint"),
     expect: { kind: "chords", count: degs.length },
     judgeStep: (got, i) => ({ ok: sameSet(pcSet(got), pcSet(chords[i])) }),
     onStep: (apis, i, ok, ui) => {
+      if (written) {
+        // the chord just played turns green or red in both hands
+        const ev = apis[0].events,
+          n = degs.length;
+        for (const e of [ev[i], ev[n + i]]) if (e && e._el) e._el.classList.add(ok ? "is-ok" : "is-bad");
+      }
       ui.fb.className = "read-fb" + (ok ? " ok" : "");
       ui.fb.textContent = syms.slice(0, i + 1).join(" – ") + (ok ? " ✓" : "");
     },
@@ -134,7 +153,7 @@ function build(code, f, mode, cycleI) {
 function itemLabel(key) {
   const [, code, k, r] = key.split(":");
   const f = k === "0" ? 0 : parseInt(k, 10) * (k.endsWith("f") ? -1 : 1);
-  return keyName(f) + " : " + (PROGS[code] ? progLabel(code) : code) + (r ? " (" + t("cad_recog") + ")" : "");
+  return keyName(f) + " : " + (PROGS[code] ? progLabel(code) : code) + (r ? " (" + t(r === "p" ? "cad_read" : "cad_recog") + ")" : "");
 }
 
 export default {
@@ -145,13 +164,14 @@ export default {
   thr: 9000,
   lengths: [6, 12, 24],
   lengthLabel: "qLenL",
-  defaults: { mode: "play", prog: "any" },
+  defaults: { mode: "read", prog: "any" },
   lessons: ["progressions", "tendency", "degrees"],
   options: (p) => [
     {
       key: "mode",
       label: "modeL",
       values: [
+        { v: "read", label: "cad_read" },
         { v: "play", label: "cad_play" },
         { v: "recog", label: "cad_recog" },
         { v: "cycle", label: "cad_cycle" },

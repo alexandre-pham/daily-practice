@@ -32,7 +32,18 @@ export function setExPref(ex, key, value) {
   save();
 }
 export const latency = () => (Number.isFinite(local.latency) ? local.latency : 0);
+/** Whether the latency was measured on this device. */
+export const calibrated = () => !!local.calAt;
+/** How close a tap must be: [in time, found] in ms, for the timed exercises. */
+export const TOLERANCES = { strict: [50, 110], normal: [80, 150], relaxed: [110, 200] };
+export const tolerance = () => (TOLERANCES[local.tol] ? local.tol : "normal");
+export const tolMs = () => TOLERANCES[tolerance()];
+export function setTolerance(v) {
+  if (TOLERANCES[v]) local.tol = v;
+  save();
+}
 export function setLatency(ms) {
+  local.calAt = Date.now();
   local.latency = Math.max(-200, Math.min(400, Math.round(ms)));
   save();
 }

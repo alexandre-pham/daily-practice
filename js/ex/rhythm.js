@@ -4,7 +4,7 @@
 // cell; the timing error (ms) is what decides whether a cell is solid.
 import { t } from "../i18n.js";
 import { pickOne } from "../theory.js";
-import { pickByWeight, tempoOf, setTempo, latency } from "../exercises.js";
+import { pickByWeight, tempoOf, setTempo, latency, calibrated, tolerance, setTolerance, TOLERANCES } from "../exercises.js";
 import { el } from "../util.js";
 import { group, chip } from "../ui/exhome.js";
 import { startCalibration } from "../ui/perform.js";
@@ -261,7 +261,20 @@ export default {
     const cal = el("button", "btn2", t("calBtn"));
     cal.type = "button";
     cal.addEventListener("click", () => startCalibration(rerender));
-    box.appendChild(group(t("latencyL"), [cal], t("latencyH", latency())));
+    box.appendChild(group(t("latencyL"), [cal], calibrated() ? t("latencyH", latency()) : t("latencyNone")));
+    const tol = tolerance();
+    box.appendChild(
+      group(
+        t("tolL"),
+        Object.keys(TOLERANCES).map((k) =>
+          chip(t("tol_" + k), tol === k, () => {
+            setTolerance(k);
+            rerender();
+          }),
+        ),
+        t("tolH", TOLERANCES[tol][0]),
+      ),
+    );
     return box;
   },
 };
