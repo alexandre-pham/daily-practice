@@ -11,7 +11,7 @@ import { on } from "../bus.js";
 import { t } from "../i18n.js";
 import { registerRunner, shell, fitWidth, fitScale, midiMode, midiHint, button, showResult, openPanel, closePanel } from "./exrun.js";
 import { score } from "./score.js";
-import { audio, click, hush, audioAt, heardNow } from "../sound.js";
+import { audio, click, note, hush, audioAt, heardNow, piano, hasPiano } from "../sound.js";
 import { recordSkill, addRound, latency, setLatency, setTempo, tolMs, calibrated } from "../exercises.js";
 import { read } from "../reading.js";
 import { MIDI_OK, ensureMidi } from "../recorder.js";
@@ -34,6 +34,9 @@ registerRunner("perform", (ex, opts) => {
     hits: 0,
     attacks: 0,
     devs: [],
+    cont: [],
+    notes: [],
+    timing: [],
     started: performance.now(),
     phase: "idle",
     raf: 0,
@@ -69,19 +72,22 @@ function nextPiece(again) {
     a.missed = false;
     a.ev.label = undefined;
     a.ev.cls = "";
+    if (a.note) a.note.cls = "";
   });
   P.extras = 0;
   P.phase = "idle";
+  P.demo = !!pc.pitched && !midiMode();
   draw();
   progress();
   const u = P.ui;
-  u.prompt.textContent = t("perf_ready", pc.tempo);
+  u.prompt.textContent = pc.pitched ? pc.keyName + " · " + pc.time.join("/") + " · ♩ = " + pc.tempo : t("perf_ready", pc.tempo);
   u.prompt.classList.remove("hide");
   u.fb.className = "read-fb";
   u.fb.textContent = "\u00a0";
-  pads();
+  if (pc.pitched) study();
+  else pads();
   u.actions.textContent = "";
-  const go = button(t("perf_go"), "btn perf-go", ready);
+  const go = button(P.demo ? t("perf_demo") : t("perf_go"), "btn perf-go", ready);
   u.actions.appendChild(go);
   go.focus();
   u.hint.textContent = inputHint();
@@ -95,9 +101,13 @@ function draw() {
   const wrap = el("div", "ex-score");
   u.staff.appendChild(wrap);
   const rows = pc.sc.staves.length;
-  const w = fitWidth(u.staff, rows, 900);
+  // Pieces are drawn a little smaller, so four bars fit on one line where the screen allows.
+  const size = pc.pitched ? rows + 0.5 : rows;
+  let w = fitWidth(u.staff, size, pc.pitched ? 1500 : 900);
+  // On a phone, two bars per line rather than one: smaller notes, but phrases stay readable.
+  if (pc.pitched && window.innerWidth < 700) w = Math.max(w, 600);
   P.api = score(pc.sc, Object.assign({ width: w, label: t("perf_aria") }, pc.scOpts || {}));
-  wrap.style.maxWidth = Math.round(w * fitScale(rows)) + "px";
+  wrap.style.maxWidth = Math.round(w * fitScale(size)) + "px";
   wrap.appendChild(P.api.svg);
   P.wrap = wrap;
 }
@@ -113,10 +123,40 @@ function fitStage() {
 }
 
 function inputHint() {
+  if (P.piece.pitched) return P.demo ? t("perf_demoH") : midiHint() + (calibrated() ? "" : " " + t("perf_notCal"));
   const two = P.piece.twoHands;
   const cal = calibrated() ? "" : " " + t("perf_notCal");
   if (midiMode()) return midiHint() + " " + t(two ? "perf_midi2" : "perf_midi1") + cal;
   return t(two ? "perf_keys2" : "perf_keys1") + cal;
+}
+
+/**
+ * Before a piece: time to study it. A short checklist of what to look for, and a countdown;
+ * "Ready" can be pressed at any time.
+ */
+function study() {
+  const u = P.ui,
+    pc = P.piece;
+  u.area.textContent = "";
+  const box = el("div", "study");
+  // The full checklist where there is room; a one-line reminder on small screens.
+  if (window.innerWidth >= 700 && window.innerHeight >= 700) {
+    const ul = el("ul", "studylist");
+    for (const k of ["study_key", "study_time", "study_hands", "study_shapes", "study_repeat"]) ul.appendChild(el("li", "", t(k)));
+    box.appendChild(ul);
+  } else box.appendChild(el("p", "study-short", t("study_short")));
+  const left = el("p", "muted small study-left");
+  box.appendChild(left);
+  u.area.appendChild(box);
+  let n = pc.study;
+  clearInterval(P.studyTimer);
+  const tick = () => {
+    left.textContent = n > 0 ? t("study_left", n) : t("study_ready");
+    if (n-- <= 0) clearInterval(P.studyTimer);
+  };
+  tick();
+  P.studyTimer = setInterval(tick, 1000);
+  if (pc.partnerNotes.length || P.demo) piano(); // load the samples while the player studies
 }
 
 /** Big tap areas for playing without a piano (and for touch screens). */
@@ -143,13 +183,23 @@ function pads() {
   u.area.appendChild(row);
 }
 
-function ready() {
+async function ready() {
   const ctx = audio();
   if (!ctx) {
     P.ui.fb.textContent = t("noAudio");
     return;
   }
   if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  clearInterval(P.studyTimer);
+  const pc0 = P.piece;
+  if ((pc0.partnerNotes && pc0.partnerNotes.length) || P.demo) {
+    if (!hasPiano()) {
+      P.ui.prompt.textContent = t("perf_loading");
+      P.ui.actions.textContent = "";
+      await piano();
+      if (!P || P.piece !== pc0) return;
+    }
+  }
   const pc = P.piece,
     beat = 60 / pc.tempo,
     countIn = pc.beats,
@@ -158,7 +208,11 @@ function ready() {
   P.T0 = ctx.currentTime + LEAD_S;
   P.Tp = P.T0 + countIn * beat;
   P.end = totalBeats;
-  for (let i = 0; i < countIn + totalBeats; i++) click(P.T0 + i * beat, i % pc.beats === 0, i < countIn ? 1 : 0.7);
+  const clicksAll = pc.clicks !== false;
+  for (let i = 0; i < countIn + totalBeats; i++) if (i < countIn || clicksAll) click(P.T0 + i * beat, i % pc.beats === 0, i < countIn ? 1 : pc.pitched ? 0.35 : 0.7);
+  // the partner part (and, without a piano, the whole piece as a demonstration)
+  const sound = (pc.partnerNotes || []).concat(P.demo ? pc.expected.map((a) => ({ t: a.t, d: a.ev.d, p: a.midi })) : []);
+  for (const n of sound) note(n.p, P.Tp + n.t * beat, n.d * beat * 0.95, P.demo ? 78 : 64);
   P.phase = "count";
   P.ui.actions.textContent = "";
   P.ui.prompt.textContent = "";
@@ -181,12 +235,21 @@ function loop() {
       P.ui.prompt.textContent = "";
     }
     P.api.setCursor(Math.min(q, P.end - 0.01));
+    // look-ahead: a bar disappears once the cursor is in it (or past its middle)
+    const pc = P.piece;
+    if (pc.fade) {
+      const barLen = (pc.time[0] * 4) / pc.time[1];
+      P.api.barGroups.forEach((g, i) => {
+        if (g && q >= i * barLen + (pc.fade === 1 ? barLen / 2 : 0)) g.classList.add("gone");
+      });
+    }
     // attacks whose time has passed without a tap are missed
-    for (const a of P.piece.expected)
-      if (a.dev === undefined && !a.missed && (q - a.t) * P.beat * 1000 > WINDOW_MS) {
-        a.missed = true;
-        mark(a.ev, "is-bad");
-      }
+    if (!P.demo)
+      for (const a of pc.expected)
+        if (a.dev === undefined && !a.missed && (q - a.t) * P.beat * 1000 > WINDOW_MS) {
+          a.missed = true;
+          mark(a.note && a.note._el ? { _el: a.note._el } : a.ev, "is-bad");
+        }
   }
   if (q > P.end + 0.4) return finishPiece();
   P.raf = requestAnimationFrame(loop);
@@ -198,10 +261,14 @@ function mark(ev, cls) {
   ev._el.classList.add(cls);
 }
 
-/** A key press at a performance.now() time, in a zone: "any", "hi" (right hand) or "lo". */
-function tap(zone, perfMs) {
+/**
+ * A key press at a performance.now() time, in a zone: "any", "hi" (right hand) or "lo". In a
+ * piece, the pitch must be right too: a wrong note counts as an extra one.
+ */
+function tap(zone, perfMs, midi) {
   if (cal) return calTap(perfMs);
-  if (!P || (P.phase !== "count" && P.phase !== "play")) return;
+  if (!P || (P.phase !== "count" && P.phase !== "play") || P.demo) return;
+  if (P.piece.pitched && midi === undefined) return;
   const q = qAt(audioAt(perfMs) - latency() / 1000);
   if (q < -0.5) return; // tapping along with the count-in
   let best = null,
@@ -209,6 +276,7 @@ function tap(zone, perfMs) {
   for (const a of P.piece.expected) {
     if (a.dev !== undefined || a.missed) continue;
     if (a.zone !== "any" && zone !== "any" && a.zone !== zone) continue;
+    if (a.midi !== undefined && a.midi !== midi) continue;
     const d = (q - a.t) * P.beat * 1000;
     if (Math.abs(d) <= WINDOW_MS && Math.abs(d) < bestD) {
       best = a;
@@ -218,7 +286,7 @@ function tap(zone, perfMs) {
   }
   if (best) {
     best.dev = best._d;
-    mark(best.ev, Math.abs(best.dev) <= GOOD_MS ? "is-ok" : "is-hint");
+    mark(best.note && best.note._el ? { _el: best.note._el } : best.ev, Math.abs(best.dev) <= GOOD_MS ? "is-ok" : "is-hint");
   } else P.extras++;
 }
 
@@ -227,6 +295,7 @@ function finishPiece() {
   P.phase = "done";
   hush();
   P.api.clearCursor();
+  if (P.piece.pitched) return finishPitched();
   const pc = P.piece,
     ex = pc.expected;
   const hit = ex.filter((a) => a.dev !== undefined),
@@ -271,25 +340,88 @@ function finishPiece() {
   fitStage();
 }
 
+/**
+ * The end of a piece: right notes, notes in time, and continuity, the share of beats where
+ * something right was played. Continuity comes first: not stopping is the habit trained here.
+ */
+function finishPitched() {
+  const pc = P.piece,
+    ex = pc.expected,
+    u = P.ui;
+  if (P.demo) {
+    draw();
+    u.fb.className = "read-fb";
+    u.fb.textContent = t("perf_demoDone");
+    return afterPiece(false);
+  }
+  const hit = ex.filter((a) => a.dev !== undefined),
+    good = hit.filter((a) => Math.abs(a.dev) <= GOOD_MS);
+  const beatsWith = new Map();
+  for (const a of ex) {
+    const b = Math.floor(a.t + 1e-9);
+    beatsWith.set(b, (beatsWith.get(b) || false) || a.dev !== undefined);
+  }
+  const cont = beatsWith.size ? [...beatsWith.values()].filter(Boolean).length / beatsWith.size : 0,
+    notes = ex.length ? hit.length / ex.length : 0,
+    timing = hit.length ? good.length / hit.length : 0,
+    mean = hit.length ? hit.reduce((s, a) => s + Math.abs(a.dev), 0) / hit.length : 0;
+  const pieceOk = notes >= 0.8 && cont >= 0.8;
+  recordSkill(ex[0] ? ex[0].item : "pcs:0", pieceOk, mean);
+  // a missed note sends its interval back to the Intervals exercise
+  for (const a of ex) if (a.dev === undefined && a.iv) recordSkill(a.iv, false, 0);
+  P.i++;
+  if (pieceOk) P.ok++;
+  P.cont.push(cont);
+  P.notes.push(notes);
+  P.timing.push(timing);
+  P.hits += hit.length;
+  P.attacks += ex.length;
+  hit.forEach((a) => P.devs.push(Math.abs(a.dev)));
+  for (const a of ex) a.note.cls = a.dev === undefined ? "is-bad" : Math.abs(a.dev) <= GOOD_MS ? "is-ok" : "is-hint";
+  draw();
+  u.fb.className = "read-fb " + (pieceOk ? "ok" : "bad");
+  let msg = t("perf_cont", Math.round(cont * 100)) + " · " + t("notesPct", Math.round(notes * 100)) + " · " + t("timingPct", Math.round(timing * 100));
+  if (P.extras) msg += " · " + t("perf_wrong", P.extras);
+  u.fb.textContent = msg;
+  afterPiece(true);
+}
+
+function afterPiece(counted) {
+  const u = P.ui;
+  progress();
+  u.area.textContent = "";
+  u.actions.textContent = "";
+  const done = counted && (P.total !== Infinity ? P.i >= P.total : performance.now() - P.started >= P.opts.budget);
+  const next = button(done ? t("perf_finish") : t("perf_next"), "btn perf-go", () => (done ? finishRound(false) : nextPiece()));
+  u.actions.append(button(t("perf_again"), "btn2", () => nextPiece(true)), next);
+  next.focus();
+  fitStage();
+}
+
 function finishRound(stopped) {
   const r = P;
   if (!r) return;
   P = null;
   const mean = r.devs.length ? Math.round(r.devs.reduce((a, b) => a + b, 0) / r.devs.length) : 0;
   const tempo = r.piece ? r.piece.tempo : 0;
+  clearInterval(r.studyTimer);
+  const avg = (l) => (l.length ? l.reduce((a, b) => a + b, 0) / l.length : 0);
+  const pitched = r.cont.length > 0;
   const s = { ex: r.ex.id, level: r.level, n: r.i, ok: r.ok, stopped, dur: performance.now() - r.started };
+  if (pitched) Object.assign(s, { cont: avg(r.cont), notes: avg(r.notes), timing: avg(r.timing) });
   if (r.i > 0) {
-    addRound({ ex: r.ex.id, level: r.level, n: r.i, ok: r.ok, ms: mean, tempo });
+    addRound(Object.assign({ ex: r.ex.id, level: r.level, n: r.i, ok: r.ok, ms: mean, tempo }, pitched ? { cont: Math.round(s.cont * 100) / 100 } : {}));
     // The tempo follows the results: a little faster after a good round, slower after a hard one.
     const acc = r.attacks ? r.hits / r.attacks : 0;
     let next = tempo;
     if (r.ex.tempoKey && !stopped) {
-      if (acc >= 0.9 && mean <= r.ex.thr) next = tempo + 4;
-      else if (acc < 0.7) next = tempo - 4;
+      const good = pitched ? s.cont >= 0.9 && s.notes >= 0.9 : acc >= 0.9 && mean <= r.ex.thr;
+      if (good) next = tempo + 4;
+      else if ((pitched ? s.cont : acc) < 0.7) next = Math.max(40, tempo - 4);
       setTempo(r.ex.tempoKey(r.level), next);
     }
     const box = el("div", "perf-sum");
-    box.appendChild(el("p", "", t("perf_sumHits", Math.round(acc * 100)) + " · " + t("perf_mean", mean)));
+    if (!pitched) box.appendChild(el("p", "", t("perf_sumHits", Math.round(acc * 100)) + " · " + t("perf_mean", mean)));
     if (next !== tempo) box.appendChild(el("p", "muted small", t(next > tempo ? "perf_faster" : "perf_slower", next)));
     s.extra = box;
   }
@@ -301,7 +433,7 @@ function finishRound(stopped) {
 on("noteon", (ev) => {
   if (!P && !cal) return;
   const two = P && P.piece && P.piece.twoHands;
-  tap(two ? (ev.midi >= 60 ? "hi" : "lo") : "any", ev.time);
+  tap(two ? (ev.midi >= 60 ? "hi" : "lo") : "any", ev.time, ev.midi);
 });
 
 document.addEventListener("keydown", (e) => {

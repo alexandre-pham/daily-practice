@@ -2418,3 +2418,21 @@ details summary {
     animation: none;
   }
 }
+.study {
+  width: 100%;
+  max-width: 560px;
+}
+.studylist {
+  margin: 0;
+  padding-left: 20px;
+  line-height: 1.5;
+}
+.study-left {
+  margin: 8px 0 0;
+  text-align: center;
+}
+.study-short {
+  margin: 0;
+  text-align: center;
+  font-size: 0.92rem;
+}

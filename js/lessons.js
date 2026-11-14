@@ -379,6 +379,70 @@ export const LESSONS = [
       },
     ],
   },
+  {
+    id: "studyScore",
+    title: { fr: "Étudier une partition en 30 secondes", en: "Studying a score in 30 seconds" },
+    blocks: [
+      {
+        type: "p",
+        text: {
+          fr: "Avant de jouer une pièce inconnue, prends quelques secondes pour la parcourir. Ce n'est pas du temps perdu : c'est ce qui permet ensuite de ne pas s'arrêter.",
+          en: "Before playing an unknown piece, take a few seconds to look it over. It's not time lost: it's what lets you keep going afterwards.",
+        },
+      },
+      {
+        type: "list",
+        items: [
+          { fr: "L'armure et la tonalité : quelles notes seront altérées ?", en: "Key signature and key: which notes will be altered?" },
+          { fr: "La mesure : 2, 3 ou 4 temps ? Repère les rythmes difficiles.", en: "Time signature: 2, 3 or 4 beats? Spot the hard rhythms." },
+          { fr: "La position des mains au départ, et les grands déplacements.", en: "Where the hands start, and the big moves." },
+          { fr: "Ce que tu reconnais : accords, gammes, accords brisés de la main gauche.", en: "What you recognise: chords, scales, left-hand broken chords." },
+          { fr: "Ce qui se répète : une mesure lue deux fois, c'est une mesure de moins à lire.", en: "What repeats: a bar read twice is one less bar to read." },
+        ],
+      },
+    ],
+  },
+  {
+    id: "readAhead",
+    title: { fr: "Lire en avance", en: "Reading ahead" },
+    blocks: [
+      {
+        type: "p",
+        text: {
+          fr: "Les bons lecteurs regardent plus loin que ce qu'ils jouent : pendant que les mains jouent une mesure, les yeux lisent déjà la suivante.",
+          en: "Good readers look further than what they play: while the hands play one bar, the eyes are already reading the next.",
+        },
+      },
+      {
+        type: "p",
+        text: {
+          fr: "Le mode « Lire en avance » s'y entraîne : chaque mesure disparaît pendant que tu la joues. Commence par le niveau Facile, à un tempo lent ; joue de mémoire ce que tu viens de lire, et garde les yeux un temps devant.",
+          en: "The “Read ahead” mode trains this: each bar disappears while you play it. Start with Easy, at a slow tempo; play from memory what you just read, and keep your eyes one beat ahead.",
+        },
+      },
+    ],
+  },
+  {
+    id: "playTogether",
+    title: { fr: "Jouer avec un partenaire", en: "Playing with a partner" },
+    blocks: [
+      {
+        type: "p",
+        text: {
+          fr: "Quand on joue avec quelqu'un, la musique ne s'arrête pas pour nous. C'est pour cela que les accompagnateurs lisent si bien : ils ont appris à garder le tempo, quitte à laisser passer une note.",
+          en: "When playing with someone, the music doesn't stop for us. That's why accompanists read so well: they've learned to keep the tempo, even if a note slips by.",
+        },
+      },
+      {
+        type: "list",
+        items: [
+          { fr: "Écoute l'autre partie : elle te dit où tu en es.", en: "Listen to the other part: it tells you where you are." },
+          { fr: "Si tu te perds, retrouve le premier temps de la mesure suivante et reprends là.", en: "If you get lost, find the first beat of the next bar and come back in there." },
+          { fr: "Mieux vaut une note simplifiée à temps qu'une note juste en retard.", en: "A simplified note on time beats a right note late." },
+        ],
+      },
+    ],
+  },
 ];
 
 export const lessonById = (id) => LESSONS.find((l) => l.id === id);

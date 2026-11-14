@@ -120,16 +120,32 @@ export function score(sc, o = {}) {
     headerW = (brace ? 14 : 0) + 50 + (staves.some((s) => s.clef !== "p") ? nkey * 15 : 0) + 6;
   const timeW = time ? 34 : 0;
   const width = Math.max(o.width || 0, 200);
-  const systems = [];
-  let curSys = null;
-  for (const bar of bars) {
-    const head = headerW + (systems.length === 0 && !curSys ? timeW : 0);
-    if (!curSys || (o.wrap !== false && curSys.w + bar.w > width && curSys.bars.length)) {
-      curSys = { bars: [], w: head, head };
-      systems.push(curSys);
+  // Line breaks: as few systems as fit the width, then the bars spread evenly over them
+  // (2 + 2 rather than 3 + 1).
+  const pack = (limit) => {
+    const out = [];
+    let cur = null;
+    for (const bar of bars) {
+      const head = headerW + (out.length === 0 && !cur ? timeW : 0);
+      if (!cur || (o.wrap !== false && cur.w + bar.w > Math.min(width, head + limit) && cur.bars.length)) {
+        cur = { bars: [], w: head, head };
+        out.push(cur);
+      }
+      cur.bars.push(bar);
+      cur.w += bar.w;
     }
-    curSys.bars.push(bar);
-    curSys.w += bar.w;
+    return out;
+  };
+  let systems = pack(Infinity);
+  if (systems.length > 1) {
+    const per = bars.reduce((a, b) => a + b.w, 0) / systems.length;
+    for (let f = 1; f < 2; f += 0.05) {
+      const even = pack(per * f + 1);
+      if (even.length === systems.length) {
+        systems = even;
+        break;
+      }
+    }
   }
   const sysH = 6 * S + nst * 4 * S + (nst - 1) * staffGap + (o.labels ? 18 : 0);
   const natural = Math.max(...systems.map((s) => s.w)) + 6;

@@ -9,5 +9,6 @@ import degrees from "./degrees.js";
 import cadences from "./cadences.js";
 import jumps from "./jumps.js";
 import ear from "./ear.js";
+import { pieces, ensemble } from "./pieces.js";
 
-register(intervals, keys, rhythm, chords, degrees, cadences, jumps, ear);
+register(intervals, keys, rhythm, chords, degrees, cadences, pieces, ensemble, jumps, ear);
