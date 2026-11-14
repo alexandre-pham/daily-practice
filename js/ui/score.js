@@ -282,6 +282,7 @@ function drawVoice(g, v, evs, bar, clef, top, api) {
     e._el = eg;
     api.events.push(e);
     const x = col.X;
+    if (e.hidden) continue; // keeps its time, draws nothing (e.g. the empty staff of a grand staff)
     if (e.rest) {
       drawRest(eg, e.d, x, clef === "p" ? mid : mid, top);
       items.push({ e, x, rest: true });

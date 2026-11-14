@@ -81,7 +81,7 @@ function question(level, p, prev) {
       const shape = g.length === ms.length && g.every((m, i) => i === 0 || m - g[i - 1] === ms[i] - ms[i - 1]);
       return { ok: false, shape, got: g };
     },
-    choices: choicesOf(c.harmonic ? t("ivName", intervalOf(c.notes[0], c.notes[1]).number, "") : right, wrong),
+    choices: choicesOf(cap(c.harmonic ? t("ivName", intervalOf(c.notes[0], c.notes[1]).number, "") : right), wrong.map(cap)),
     fb: (ok, d) => {
       const name = c.steps ? contourLabel(c.steps) : c.harmonic ? t("ivName", intervalOf(c.notes[0], c.notes[1]).number, intervalOf(c.notes[0], c.notes[1]).quality) : ivName(c.notes[0], c.notes[1]);
       if (ok) return name.charAt(0).toUpperCase() + name.slice(1);
@@ -97,6 +97,7 @@ function question(level, p, prev) {
     },
   };
 }
+const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 const flip = (s) => (s[0] === "+" ? "-" : "+") + s.slice(1);
 const contourLabel = (steps) => steps.map((s) => (s[0] === "+" ? "↑" : "↓") + s.slice(1)).join(" ");
 

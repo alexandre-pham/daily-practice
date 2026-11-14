@@ -35,3 +35,30 @@ export function choicesOf(right, wrong, max = 4) {
   const set = [...new Set(wrong.filter((w) => w !== right))];
   return shuffle([{ label: right, ok: true }, ...shuffle(set).slice(0, max - 1).map((label) => ({ label, ok: false }))]);
 }
+
+/** A MIDI pitch as a spelled note (sharps for black keys). */
+export function spellMidi(m) {
+  const pc = ((m % 12) + 12) % 12,
+    oct = Math.floor(m / 12) - 1;
+  const white = [0, 2, 4, 5, 7, 9, 11].indexOf(pc);
+  if (white >= 0) return { dn: oct * 7 + white, acc: 0 };
+  return { dn: oct * 7 + [0, 2, 4, 5, 7, 9, 11].indexOf(pc - 1), acc: 1 };
+}
+/** Grand staff with notes in time order, each on the staff that suits its pitch. */
+export function grandSeq(notes, key = 0, d = 4) {
+  const top = [],
+    bot = [];
+  for (const n of notes) {
+    const hi = n.dn >= 28;
+    top.push(hi ? { d, notes: [n] } : { d, notes: [], hidden: true });
+    bot.push(hi ? { d, notes: [], hidden: true } : { d, notes: [n] });
+  }
+  return {
+    staves: [{ clef: "t" }, { clef: "b" }],
+    key,
+    voices: [
+      { staff: 0, events: top },
+      { staff: 1, events: bot },
+    ],
+  };
+}

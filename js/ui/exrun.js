@@ -204,10 +204,12 @@ function drawQuestion(marks) {
       const wrap = el("div", "ex-score");
       if (scs.length > 1) wrap.appendChild(el("span", "ex-score-n", String(k + 1)));
       u.staff.appendChild(wrap);
-      const w = fitWidth(u.staff, sc.staves.length, q.maxW || 0);
+      // Several scores share the height: size them as one taller system.
+      const rows = sc.staves.length * scs.length;
+      const w = fitWidth(u.staff, rows, q.maxW || 0);
       const api = score(sc, Object.assign({ width: w, even: !sc.time, gap: 56, label: q.label || "" }, q.scOpts || {}));
       // A short question keeps the same note size as a long one, centred, instead of being enlarged.
-      if (q.maxW) wrap.style.maxWidth = Math.round(w * fitScale(sc.staves.length)) + "px";
+      if (q.maxW || scs.length > 1) wrap.style.maxWidth = Math.round(w * fitScale(rows)) + "px";
       wrap.appendChild(api.svg);
       if (k === 0) r.api = api;
       (r.apis = r.apis || [])[k] = api;
@@ -228,7 +230,7 @@ function drawQuestion(marks) {
   if (useChoices) {
     const row = el("div", "ex-choices" + (q.choices.length > 4 ? " many" : ""));
     q.choices.forEach((c, i) => {
-      const b = button(c.label.charAt(0).toUpperCase() + c.label.slice(1), "choice", () => {
+      const b = button(c.label, "choice", () => {
         if (r.answered) return;
         b.classList.add(c.ok ? "right" : "wrong");
         answer(!!c.ok, { choice: i });
@@ -431,7 +433,7 @@ function closeGroup() {
     r.inp.groups.push(g);
     const i = r.inp.groups.length - 1,
       res = r.q.judgeStep(g, i);
-    if (r.q.onStep) r.q.onStep(r.apis || [r.api], i, res.ok);
+    if (r.q.onStep) r.q.onStep(r.apis || [r.api], i, res.ok, r.ui);
     if (!res.ok) return answer(false, { at: i, got: g });
     if (r.inp.groups.length >= e.count) answer(true, { groups: r.inp.groups });
   }
