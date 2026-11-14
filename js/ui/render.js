@@ -22,7 +22,7 @@ import { getClip, extOf } from "../clips.js";
 import { account } from "../cloud.js";
 import { cloudStatus } from "../cloud-sync.js";
 import { lockScroll } from "./dialogs.js";
-import { renderRead } from "./reading.js";
+import { renderReadTab } from "./exhome.js";
 import { renderRecs, recName, fileName, download } from "./recordings.js";
 import { clipBlob } from "../cloud-recs.js";
 
@@ -130,7 +130,7 @@ function renderView() {
   if (state.view === "sess") renderSessions();
   else if (state.view === "stats") renderStats();
   else if (state.view === "recs") renderRecs();
-  else renderRead();
+  else renderReadTab();
 }
 
 // ---------- sessions view ----------

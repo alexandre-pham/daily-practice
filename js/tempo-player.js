@@ -19,7 +19,7 @@ let buffers = null; // Map midi → AudioBuffer, shared by every player
 let loading = null;
 
 /** Load and decode all samples once; resolves when the piano is ready. */
-function loadPiano(ctx) {
+export function loadPiano(ctx) {
   if (buffers) return Promise.resolve();
   if (!loading)
     loading = Promise.all(
@@ -41,6 +41,53 @@ function loadPiano(ctx) {
       },
     );
   return loading;
+}
+
+export const pianoReady = () => !!buffers;
+
+/** Output chain shared by players: gain, a little room, a gentle compressor. */
+export function pianoOut(ctx) {
+  const comp = ctx.createDynamicsCompressor(),
+    rev = ctx.createConvolver(),
+    wet = ctx.createGain(),
+    out = ctx.createGain();
+  comp.threshold.value = -12;
+  comp.ratio.value = 3;
+  rev.buffer = roomImpulse(ctx);
+  wet.gain.value = REVERB_WET;
+  out.gain.value = 2.4;
+  out.connect(comp);
+  out.connect(rev).connect(wet).connect(comp);
+  comp.connect(ctx.destination);
+  return out;
+}
+
+/**
+ * Sound one note {p: MIDI pitch, v: velocity, ring: seconds held} at audio time `when`.
+ * Returns the voice {src, g} so it can be silenced.
+ */
+export function pianoVoice(ctx, out, n, when, rate = 1) {
+  // Nearest sample; at most a semitone and a half of pitch shift.
+  let s = SAMPLES[0];
+  for (const x of SAMPLES) if (Math.abs(x.midi - n.p) < Math.abs(s.midi - n.p)) s = x;
+  const src = ctx.createBufferSource(),
+    g = ctx.createGain(),
+    tone = ctx.createBiquadFilter();
+  src.buffer = buffers.get(s.midi);
+  src.playbackRate.value = Math.pow(2, (n.p - s.midi) / 12);
+  // One velocity layer: soft notes are made quieter and darker, as on a real piano.
+  const vel = n.v / 127;
+  tone.type = "lowpass";
+  tone.frequency.value = 900 + 17000 * vel * vel;
+  tone.Q.value = 0.3;
+  const peak = 0.85 * Math.pow(vel, 1.6),
+    end = when + Math.max(0.05, n.ring / rate);
+  g.gain.setValueAtTime(peak, when);
+  g.gain.setTargetAtTime(0, end, RELEASE_S / 4);
+  src.connect(tone).connect(g).connect(out);
+  src.start(when);
+  src.stop(end + RELEASE_S * 2);
+  return { src, g };
 }
 
 /** A short synthetic room: decaying stereo noise, enough to take the dryness off. */
@@ -86,19 +133,7 @@ export class Player {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return false;
     this.ctx = new AC();
-    const ctx = this.ctx,
-      comp = ctx.createDynamicsCompressor(),
-      rev = ctx.createConvolver(),
-      wet = ctx.createGain();
-    comp.threshold.value = -12;
-    comp.ratio.value = 3;
-    rev.buffer = roomImpulse(ctx);
-    wet.gain.value = REVERB_WET;
-    this.out = ctx.createGain();
-    this.out.gain.value = 2.4;
-    this.out.connect(comp);
-    this.out.connect(rev).connect(wet).connect(comp);
-    comp.connect(ctx.destination);
+    this.out = pianoOut(this.ctx);
     return true;
   }
 
@@ -182,29 +217,8 @@ export class Player {
   }
 
   voice(n, when) {
-    const ctx = this.ctx;
-    // Nearest sample; at most a semitone and a half of pitch shift.
-    let s = SAMPLES[0];
-    for (const x of SAMPLES) if (Math.abs(x.midi - n.p) < Math.abs(s.midi - n.p)) s = x;
-    const src = ctx.createBufferSource(),
-      g = ctx.createGain(),
-      tone = ctx.createBiquadFilter();
-    src.buffer = buffers.get(s.midi);
-    src.playbackRate.value = Math.pow(2, (n.p - s.midi) / 12);
-    // One velocity layer: soft notes are made quieter and darker, as on a real piano.
-    const vel = n.v / 127;
-    tone.type = "lowpass";
-    tone.frequency.value = 900 + 17000 * vel * vel;
-    tone.Q.value = 0.3;
-    const peak = 0.85 * Math.pow(vel, 1.6),
-      end = when + Math.max(0.05, n.ring / this.rate);
-    g.gain.setValueAtTime(peak, when);
-    g.gain.setTargetAtTime(0, end, RELEASE_S / 4);
-    src.connect(tone).connect(g).connect(this.out);
-    src.start(when);
-    src.stop(end + RELEASE_S * 2);
-    const v = { src, g };
+    const v = pianoVoice(this.ctx, this.out, n, when, this.rate);
     this.voices.add(v);
-    src.onended = () => this.voices.delete(v);
+    v.src.onended = () => this.voices.delete(v);
   }
 }

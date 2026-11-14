@@ -319,8 +319,9 @@ function advance() {
 
 const active = () => !!round;
 
-on("noteon", (midi) => {
+on("noteon", (ev) => {
   if (!active() || !read.prefs.midi) return;
+  const midi = ev.midi;
   // A black key matches no letter, so it is always wrong (the round has no sharps or flats).
   give([0, 2, 4, 5, 7, 9, 11].indexOf(midi % 12), midi);
 });

@@ -109,11 +109,21 @@ export function history() {
   const r = data().rounds;
   return Object.keys(r)
     .map((k) => r[k])
+    .filter((h) => !h.ex)
     .sort((a, b) => b.t - a.t);
 }
 
 // ---------- mastery ----------
 /** 0 unseen, 1 needs work, 2 getting there, 3 solid. */
+export function noteStat(clef, dn) {
+  return data().notes[noteKey(clef, dn)];
+}
+/** Record an answer for a note from another exercise (the daily routine's note block). */
+export function recordNote(clef, dn, ok, ms) {
+  record(clef, dn, ok, ms);
+}
+export const noteWeight = (clef, dn) => weight(clef, dn);
+
 export function mastery(clef, dn) {
   const s = data().notes[noteKey(clef, dn)];
   if (!s) return 0;

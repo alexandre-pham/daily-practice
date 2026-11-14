@@ -12,7 +12,7 @@ service cloud.firestore {
     match /users/{userId}/{collection}/{docId} {
       allow read, delete: if isOwner(userId);
       allow create, update: if isOwner(userId)
-        && collection in ['acts', 'entries', 'notes', 'rounds', 'recordings']
+        && collection in ['acts', 'entries', 'notes', 'skills', 'rounds', 'recordings']
         && request.resource.data.t is number
         && request.resource.data.st == request.time;
     }

@@ -6,7 +6,9 @@
 //            clips: [{id, at, dur, mime, notes, name?, cloud?}]  recordings made during the session;
 //            the files themselves are in IndexedDB (and in Cloud Storage once `cloud` is set)
 //   read:    { notes:  { "t30": {n, acc, ms, t} }            note-reading stats, one record per clef and note
-//              rounds: { rid: {clef, level, n, ok, ms, t} } }  finished note-reading rounds
+//              skills: { "int:t:3M:up": {n, acc, ms, t} }   reading-exercise stats, one record per item
+//              rounds: { rid: {clef, level, n, ok, ms, t} }   finished note-reading rounds
+//                    | { rid: {ex, level, n, ok, ms, t, tempo?, cont?, score?} } }  other exercises
 // Every record carries a timestamp `t`; when two devices disagree, the most recent record wins.
 import { DATE_RE, readJSON, writeJSON, readStr, writeStr, keyOf, dateOf, addDays, weekStart, uid } from "./util.js";
 import { emit } from "./bus.js";
@@ -17,7 +19,7 @@ const LS_CUR = "suivi-piano-current";
 const LS_RUN = "suivi-piano-run";
 
 export const state = {
-  data: { acts: {}, entries: {}, read: { notes: {}, rounds: {} } },
+  data: { acts: {}, entries: {}, read: { notes: {}, skills: {}, rounds: {} } },
   cur: "", // current activity id
   run: null, // live session: {act, start, note, clips, pausedMs, pausedAt, bpm}
   view: "sess", // "sess" | "stats" | "read"
@@ -85,7 +87,10 @@ function cleanEntry(v) {
 }
 
 const NOTE_RE = /^[tb]\d{1,2}$/;
-const ROUNDS_MAX = 300;
+export const SKILL_RE = /^[a-z0-9_]{2,8}:[\w#:+.-]{1,48}$/;
+/** Exercises whose rounds are kept (see js/exercises.js). */
+export const EX_IDS = ["intervals", "keys", "rhythm", "chords", "degrees", "cadences", "pieces", "ensemble", "jumps", "ear", "notesq", "bench", "daily"];
+const ROUNDS_MAX = 600;
 const okIn = (v, list) => (list.includes(v) ? v : undefined);
 
 function cleanNote(v) {
@@ -97,6 +102,25 @@ function cleanNote(v) {
 }
 function cleanRound(v) {
   if (!v || typeof v !== "object") return null;
+  if (v.ex !== undefined) {
+    const ex = okIn(v.ex, EX_IDS),
+      n = num(v.n, 1, 1000),
+      ok = num(v.ok, 0, 1000),
+      level = num(v.level, 1, 20),
+      t = num(v.t, 0, T_MAX);
+    if (!ex || n === undefined || ok === undefined || ok > n || level === undefined || !t) return null;
+    return pick({
+      ex,
+      level: Math.round(level),
+      n: Math.round(n),
+      ok: Math.round(ok),
+      ms: num(v.ms, 0, 36e5) || 0,
+      tempo: num(v.tempo, 20, 300),
+      cont: num(v.cont, 0, 1),
+      score: num(v.score, 0, 20),
+      t,
+    });
+  }
   const n = num(v.n, 1, 1000),
     ok = num(v.ok, 0, 1000),
     clef = okIn(v.clef, ["t", "b", "tb"]),
@@ -119,13 +143,18 @@ function trimRounds(rounds) {
 }
 
 function normalizeRead(obj) {
-  const out = { notes: {}, rounds: {} };
+  const out = { notes: {}, skills: {}, rounds: {} };
   if (!obj || typeof obj !== "object") return out;
   const notes = obj.notes && typeof obj.notes === "object" ? obj.notes : {},
+    skills = obj.skills && typeof obj.skills === "object" ? obj.skills : {},
     rounds = obj.rounds && typeof obj.rounds === "object" ? obj.rounds : {};
   for (const k of Object.keys(notes)) {
     const v = NOTE_RE.test(k) && cleanNote(notes[k]);
     if (v) out.notes[k] = v;
+  }
+  for (const k of Object.keys(skills)) {
+    const v = SKILL_RE.test(k) && !BAD_KEYS.has(k) && cleanNote(skills[k]);
+    if (v) out.skills[k] = v;
   }
   for (const k of Object.keys(rounds)) {
     const v = isId(k) && cleanRound(rounds[k]);
@@ -174,7 +203,11 @@ function mergeMap(a, b) {
 export const merge = (a, b) => ({
   acts: mergeMap(a.acts, b.acts),
   entries: mergeMap(a.entries, b.entries),
-  read: { notes: mergeMap(a.read.notes, b.read.notes), rounds: trimRounds(mergeMap(a.read.rounds, b.read.rounds)) },
+  read: {
+    notes: mergeMap(a.read.notes, b.read.notes),
+    skills: mergeMap(a.read.skills, b.read.skills),
+    rounds: trimRounds(mergeMap(a.read.rounds, b.read.rounds)),
+  },
 });
 
 function sortObj(o) {
@@ -186,7 +219,7 @@ function sortObj(o) {
     });
   return r;
 }
-const sortRead = (r) => ({ notes: sortObj(r.notes), rounds: sortObj(r.rounds) });
+const sortRead = (r) => ({ notes: sortObj(r.notes), skills: sortObj(r.skills), rounds: sortObj(r.rounds) });
 export const canon = (d) => JSON.stringify({ acts: sortObj(d.acts), entries: sortObj(d.entries), read: sortRead(d.read) });
 export const payload = () =>
   JSON.stringify(

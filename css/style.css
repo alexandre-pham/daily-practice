@@ -1546,17 +1546,71 @@ details summary {
     height: 240px;
   }
 
-  #viewRead:not(.hide) {
+  #notesPane:not(.hide) {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-areas: "main mastery" "main hist";
-    grid-template-rows: auto 1fr;
+    grid-template-areas: "back back" "main mastery" "main hist";
+    grid-template-rows: auto auto 1fr;
     column-gap: 36px;
     align-items: start;
+  }
+  #notesBack {
+    grid-area: back;
+    justify-self: start;
   }
   #readSetup,
   #readDone {
     grid-area: main;
+  }
+  #exPane:not(.hide) {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    grid-template-areas: "back back" "main side";
+    column-gap: 36px;
+    align-items: start;
+  }
+  #exPane .backlink {
+    grid-area: back;
+    justify-self: start;
+  }
+  #exPane .expane {
+    grid-area: main;
+  }
+  #exPane .expane-side {
+    grid-area: side;
+  }
+  #exPane .expane-side > .sec:first-child {
+    margin-top: 18px;
+  }
+  #exHome:not(.hide) {
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr);
+    column-gap: 36px;
+    align-items: start;
+  }
+  #exHome > .daily,
+  #exHome > .expath {
+    grid-column: 1;
+  }
+  #exHome > .bench,
+  #exHome > .lessons-sec {
+    grid-column: 2;
+  }
+  #exHome > .daily {
+    grid-row: 1;
+  }
+  #exHome > .bench {
+    grid-row: 1;
+    margin-top: 18px;
+  }
+  #exHome > .expath {
+    grid-row: 2 / span 2;
+  }
+  #exHome > .lessons-sec {
+    grid-row: 2;
+  }
+  .exfs .ex-stage {
+    min-height: 220px;
   }
   #readMasterySec {
     grid-area: mastery;
@@ -2024,4 +2078,291 @@ details summary {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+/* ---- engraved scores (exercises) ---- */
+.score {
+  color: var(--ink);
+}
+.score .g,
+.score .dot,
+.score .beam rect,
+.score .barend,
+.score .tie {
+  fill: currentColor;
+}
+.score .clef,
+.score .ts {
+  fill: var(--ink);
+}
+.score .stem {
+  stroke: currentColor;
+  stroke-width: 1.7;
+}
+.score .ledger line {
+  stroke: currentColor;
+}
+.score .ev.is-ok,
+.score .g.is-ok {
+  color: var(--ok);
+  fill: var(--ok);
+}
+.score .ev.is-bad,
+.score .g.is-bad {
+  color: var(--felt);
+  fill: var(--felt);
+}
+.score .ev.is-hint,
+.score .g.is-hint {
+  color: var(--warn);
+  fill: var(--warn);
+}
+.score .ev.partner,
+.score .partner .clef,
+.score .partner .acc,
+.score .partner .ts {
+  color: color-mix(in srgb, var(--muted) 75%, transparent);
+  fill: color-mix(in srgb, var(--muted) 75%, transparent);
+}
+.score .brace {
+  fill: var(--ink);
+}
+.score .bar {
+  transition: opacity 0.25s;
+}
+.score .bar.gone {
+  opacity: 0;
+}
+.score .cursor {
+  fill: var(--felt);
+  opacity: 0.55;
+}
+.score .nlabel {
+  font-size: 14px;
+  fill: var(--muted);
+}
+
+/* ---- reading exercises: path, panes, lessons ---- */
+.backlink {
+  width: auto;
+  min-height: 40px;
+  margin-top: 14px;
+  padding: 6px 0;
+  color: var(--muted);
+  font-weight: 600;
+}
+.path-intro {
+  margin: -4px 8px 12px;
+}
+.excards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+}
+.excard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  text-align: left;
+  color: var(--ink);
+  font: inherit;
+  padding: 14px 16px;
+  min-height: 118px;
+}
+.excard:hover {
+  border-color: var(--muted);
+}
+.excard .ttl {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 1.08rem;
+}
+.excard .desc {
+  flex: 1;
+}
+.exmeta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.exmeta .passed {
+  color: var(--ok);
+}
+.mbar {
+  display: flex;
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--muted) 22%, transparent);
+  overflow: hidden;
+}
+.mbar .m3 {
+  background: var(--ok);
+}
+.mbar .m2 {
+  background: var(--warn);
+}
+.warnline {
+  color: var(--warn);
+  margin: 6px 0 0;
+}
+.lessonlist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.lessonbtn {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  padding: 12px 6px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+}
+.lessonbtn:hover {
+  color: var(--felt);
+}
+.lessonbtn .seen {
+  color: var(--ok);
+}
+.sheet.lesson p,
+.sheet.lesson li {
+  line-height: 1.6;
+}
+.lessonul {
+  padding-left: 20px;
+}
+.lessonul li {
+  margin: 6px 0;
+}
+.lstaff {
+  margin: 12px 0;
+}
+.lstaff svg {
+  display: block;
+  width: 100%;
+  max-width: 520px;
+  height: auto;
+  margin: 0 auto;
+}
+.lstaff figcaption {
+  text-align: center;
+}
+
+/* ---- exercise screen ---- */
+.ex-head {
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-align: center;
+}
+.ex-prompt {
+  margin: 10px 0 0;
+  text-align: center;
+  font-family: var(--serif);
+  font-size: 1.25rem;
+  font-weight: 500;
+}
+.ex-stage {
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  margin-right: 0;
+}
+.ex-score {
+  position: relative;
+  width: 100%;
+  margin: 0 auto;
+}
+.ex-score svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.ex-score-n {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-weight: 700;
+  color: var(--muted);
+}
+.ex-area {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.ex-choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+  max-width: 560px;
+}
+.ex-choices.many {
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+}
+.choice {
+  min-height: 54px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  padding: 6px 10px;
+}
+.choice:hover:not(:disabled) {
+  border-color: var(--muted);
+}
+.choice.right {
+  border-color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 16%, var(--surface));
+}
+.choice.wrong {
+  border-color: var(--felt);
+  background: var(--felt-soft);
+}
+.choice:disabled {
+  cursor: default;
+}
+.ex-plays {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.ex-actions {
+  display: flex;
+  justify-content: center;
+}
+.ex-result {
+  margin: auto 0;
+  padding: 24px 0;
+}
+.ex-result h2 {
+  margin: 0;
+}
+.weaklist {
+  margin: 0;
+  padding-left: 20px;
+}
+.weaklist li {
+  margin: 4px 0;
+}
+@media (min-width: 700px) {
+  .ex-result {
+    max-width: 640px;
+    margin: auto;
+    width: 100%;
+  }
 }

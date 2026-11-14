@@ -10,6 +10,8 @@ const PPQ = 480,
 
 const midi = { access: null, input: null, asked: false };
 const held = new Set();
+/** Keys held down right now. */
+export const heldKeys = () => held;
 let mrec = null; // {startedAt, events, notes}
 
 /** Message shown under the record buttons: {key, args} for i18n, or null. */
@@ -67,7 +69,9 @@ function onMidi(e) {
   const st = d[0] & 0xf0;
   if (st === 0x90 && d[2] > 0) held.add(d[1]);
   else if (st === 0x80 || (st === 0x90 && d[2] === 0)) held.delete(d[1]);
-  if (st === 0x90 && d[2] > 0) emit("noteon", d[1]);
+  // Note events for the reading exercises, timed on the performance.now() clock.
+  if (st === 0x90 && d[2] > 0) emit("noteon", { midi: d[1], vel: d[2], time: e.timeStamp || performance.now() });
+  else if (st === 0x80 || (st === 0x90 && d[2] === 0)) emit("noteoff", { midi: d[1], time: e.timeStamp || performance.now() });
   if (!mrec || ![0x80, 0x90, 0xa0, 0xb0, 0xc0, 0xd0, 0xe0].includes(st)) return;
   mrec.events.push({ t: e.timeStamp, d: Array.from(d.slice(0, st === 0xc0 || st === 0xd0 ? 2 : 3)) });
   if (st === 0x90 && d[2] > 0) mrec.notes++;

@@ -223,52 +223,57 @@
           </section>
         </div>
         <div id="viewRead" class="hide">
-          <section class="card read-setup" id="readSetup">
-            <h2 data-i18n="readT">Lecture de notes</h2>
-            <p class="muted read-intro" data-i18n="readIntro">Une note s'affiche : donne son nom le plus vite possible.</p>
-            <button class="primary cta" id="readStart" type="button">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path d="M7 4.5v15l12-7.5z" />
-              </svg>
-              <span data-i18n="readStart">Commencer la série</span>
-            </button>
-            <div id="readOpts"></div>
-          </section>
+          <div id="exHome"></div>
+          <div id="exPane" class="hide"></div>
+          <div id="notesPane" class="hide">
+            <button class="linkbtn backlink" id="notesBack" type="button" data-i18n="exBack">← Exercices</button>
+            <section class="card read-setup" id="readSetup">
+              <h2 data-i18n="readT">Lecture de notes</h2>
+              <p class="muted read-intro" data-i18n="readIntro">Une note s'affiche : donne son nom le plus vite possible.</p>
+              <button class="primary cta" id="readStart" type="button">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M7 4.5v15l12-7.5z" />
+                </svg>
+                <span data-i18n="readStart">Commencer la série</span>
+              </button>
+              <div id="readOpts"></div>
+            </section>
 
 
-          <section class="card read-done hide" id="readDone">
-            <h2 data-i18n="doneT">Série terminée</h2>
-            <div class="done-nums">
-              <div class="big" id="doneScore"></div>
-              <div>
-                <div id="doneAcc"></div>
-                <div class="muted small" id="doneTime"></div>
+            <section class="card read-done hide" id="readDone">
+              <h2 data-i18n="doneT">Série terminée</h2>
+              <div class="done-nums">
+                <div class="big" id="doneScore"></div>
+                <div>
+                  <div id="doneAcc"></div>
+                  <div class="muted small" id="doneTime"></div>
+                </div>
               </div>
-            </div>
-            <div id="doneMiss"></div>
-            <div class="btns">
-              <button class="btn" id="readAgain" type="button" data-i18n="again">Recommencer</button>
-              <button class="btn2" id="readBack" type="button" data-i18n="changeOpts">Changer les réglages</button>
-            </div>
-          </section>
+              <div id="doneMiss"></div>
+              <div class="btns">
+                <button class="btn" id="readAgain" type="button" data-i18n="again">Recommencer</button>
+                <button class="btn2" id="readBack" type="button" data-i18n="changeOpts">Changer les réglages</button>
+              </div>
+            </section>
 
-          <section class="sec" id="readMasterySec">
-            <h2 data-i18n="masteryT">Maîtrise des notes</h2>
-            <div id="readMastery"></div>
-            <div class="legend mlegend">
-              <span><i class="m0"></i><span data-i18n="mUnseen">pas encore vue</span></span>
-              <span><i class="m1"></i><span data-i18n="mWeak">à travailler</span></span>
-              <span><i class="m2"></i><span data-i18n="mMid">en progrès</span></span>
-              <span><i class="m3"></i><span data-i18n="mGood">acquise</span></span>
-            </div>
-            <p class="muted small" data-i18n="readLocal">Acquise : au moins 90 % de bonnes réponses en 2,5 s ou moins.</p>
-          </section>
+            <section class="sec" id="readMasterySec">
+              <h2 data-i18n="masteryT">Maîtrise des notes</h2>
+              <div id="readMastery"></div>
+              <div class="legend mlegend">
+                <span><i class="m0"></i><span data-i18n="mUnseen">pas encore vue</span></span>
+                <span><i class="m1"></i><span data-i18n="mWeak">à travailler</span></span>
+                <span><i class="m2"></i><span data-i18n="mMid">en progrès</span></span>
+                <span><i class="m3"></i><span data-i18n="mGood">acquise</span></span>
+              </div>
+              <p class="muted small" data-i18n="readLocal">Acquise : au moins 90 % de bonnes réponses en 2,5 s ou moins.</p>
+            </section>
 
-          <section class="sec" id="readHistSec">
-            <h2 data-i18n="histT">Dernières séries</h2>
-            <p class="muted hide empty-line" id="readHistEmpty" data-i18n="histEmpty">Aucune série pour l'instant.</p>
-            <ul class="rhist" id="readHist"></ul>
-          </section>
+            <section class="sec" id="readHistSec">
+              <h2 data-i18n="histT">Dernières séries</h2>
+              <p class="muted hide empty-line" id="readHistEmpty" data-i18n="histEmpty">Aucune série pour l'instant.</p>
+              <ul class="rhist" id="readHist"></ul>
+            </section>
+          </div>
         </div>
       </main>
 
@@ -362,6 +367,24 @@
           <div class="piano" id="readKeys" role="group" data-i18n-aria="answerL" aria-label="Réponse"></div>
           <button class="read-skip" id="readSkip" type="button" data-i18n="skip">Passer</button>
           <p class="muted small read-hint" id="readHint"></p>
+        </div>
+      </div>
+
+      <div class="focus readfs exfs hide" id="exRun" role="dialog" aria-label="Exercice">
+        <div class="in" id="exIn"></div>
+      </div>
+
+      <div class="hide" id="lessonDlg">
+        <div class="backdrop" id="lessonBg"></div>
+        <div class="sheet lesson" role="dialog" aria-modal="true" aria-labelledby="lessonTitle">
+          <div class="in">
+            <div class="grab"></div>
+            <div class="hd">
+              <h2 id="lessonTitle"></h2>
+              <button class="linkbtn closebtn" id="lessonClose" type="button" data-i18n="close">Fermer</button>
+            </div>
+            <div id="lessonBody"></div>
+          </div>
         </div>
       </div>
 

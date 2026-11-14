@@ -56,6 +56,9 @@ import {
   flashBeat,
 } from "./ui/render.js";
 import { initReading } from "./ui/reading.js";
+import "./i18n-ex.js";
+import "./ex/index.js";
+import { initExHome } from "./ui/exhome.js";
 import { initTempo, openTempo } from "./ui/tempo.js";
 import { initAccount } from "./ui/account.js";
 import { initCloudSync } from "./cloud-sync.js";
@@ -462,6 +465,7 @@ setInterval(() => {
 // ---------- start ----------
 initDialogs();
 initReading();
+initExHome();
 initTempo();
 load();
 initCloudSync();

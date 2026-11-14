@@ -1,7 +1,7 @@
 // Sync of the data set with Firestore, while signed in.
 //
 // One document per record, under users/{uid}/:
-//   acts/{actId}, entries/{act~YYYY-MM-DD~sid}, notes/{t30}, rounds/{rid}
+//   acts/{actId}, entries/{act~YYYY-MM-DD~sid}, notes/{t30}, skills/{int:t:3M:up}, rounds/{rid}
 // A document holds the record as the app stores it (with its timestamp `t`) plus `st`,
 // the server time of the last write. The rule is the app's usual one: when two copies
 // of a record differ, the one with the most recent `t` wins. Deleted records are kept as
@@ -18,6 +18,7 @@ const COLLS = {
   acts: (d) => d.acts,
   entries: (d) => d.entries,
   notes: (d) => d.read.notes,
+  skills: (d) => d.read.skills,
   rounds: (d) => d.read.rounds,
 };
 const PUSH_DELAY_MS = 1500;
@@ -115,7 +116,7 @@ function stop() {
 /** Documents from a listener: validate them like any outside data, then merge. */
 function receive(coll, snap) {
   if (!meta) return;
-  const part = { acts: {}, entries: {}, read: { notes: {}, rounds: {} } };
+  const part = { acts: {}, entries: {}, read: { notes: {}, skills: {}, rounds: {} } };
   let since = meta.since;
   snap.docChanges().forEach((ch) => {
     if (ch.type === "removed" || ch.doc.metadata.hasPendingWrites) return;
@@ -187,7 +188,7 @@ async function push() {
 async function refetch(list) {
   const me = uid;
   try {
-    const part = { acts: {}, entries: {}, read: { notes: {}, rounds: {} } };
+    const part = { acts: {}, entries: {}, read: { notes: {}, skills: {}, rounds: {} } };
     const snaps = await Promise.all(list.slice(0, 50).map(([coll, k]) => fs.getDoc(fs.doc(db, "users", me, coll, toId(coll, k)))));
     if (uid !== me) return;
     snaps.forEach((d, i) => {
