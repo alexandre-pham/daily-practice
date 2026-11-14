@@ -3,6 +3,7 @@ import { t } from "../i18n.js";
 import { midiOf, chordOnDegree, degreeRoot, rnd, pickOne } from "../theory.js";
 import { pickByWeight } from "../exercises.js";
 import { midiMode } from "../ui/exrun.js";
+import { setMark } from "./common.js";
 
 const LEVELS = [{ ab: true }, { two: true }, { two: true, rhythm: true }, { sing: true }, { two: true, harmony: true }];
 const Q = 60 / 84; // a quarter note at 84 BPM, in seconds
@@ -145,8 +146,13 @@ function question(level, p, prev) {
       after: piano ? listen(c.a) : null,
       extraDelay: piano ? 1500 : 0,
       fb: (ok) => (ok ? t("ear_ok") : t("ear_compare")),
+      onNote: ([api], played) => {
+        const i = played.length - 1,
+          e = api.events[i];
+        if (e && i < ms.length) setMark(e._el, played[i] === ms[i] ? "is-ok" : "is-bad");
+      },
       mark: (apis, ok, d) =>
-        apis[0].events.forEach((e, i) => e._el && e._el.classList.add(ok ? "is-ok" : d && d.got && d.got[i] !== ms[i] ? "is-bad" : "is-hint")),
+        apis[0].events.forEach((e, i) => setMark(e._el, ok ? "is-ok" : d && d.got ? (d.got[i] === ms[i] ? "is-ok" : "is-bad") : "is-hint")),
     };
   }
   // Two scores, one recording.

@@ -3,7 +3,7 @@ import { t } from "../i18n.js";
 import { midiOf, intervalOf, inKey, rnd, pickOne } from "../theory.js";
 import { pickByWeight, noteLabel } from "../exercises.js";
 import { known } from "../ui/exrun.js";
-import { line, clefPick, RANGE, dirKey, dirWord, ivName, choicesOf, names } from "./common.js";
+import { line, clefPick, RANGE, dirKey, dirWord, ivName, choicesOf, names, setMark } from "./common.js";
 
 const LEVELS = [
   { nums: [1, 2, 3] },
@@ -88,11 +88,19 @@ function question(level, p, prev) {
       if (d.shape) return t("fbShape") + " " + names(c.notes);
       return t("fbWas", name) + " (" + names(c.notes) + ")";
     },
+    // Each note turns green or red as soon as it is played.
+    onNote: c.harmonic
+      ? null
+      : ([api], played) => {
+          const i = played.length - 1,
+            e = api.events[i];
+          if (e && i < ms.length) setMark(e._el, played[i] === ms[i] ? "is-ok" : "is-bad");
+        },
     mark: ([api], ok, d) => {
       api.events.forEach((e, i) => {
         if (!e._el) return;
         const bad = !ok && d.got && !c.harmonic && d.got[i] !== ms[i];
-        e._el.classList.add(ok ? "is-ok" : bad ? "is-bad" : "is-hint");
+        setMark(e._el, ok ? "is-ok" : bad ? "is-bad" : d.got && !c.harmonic ? "is-ok" : "is-hint");
       });
     },
   };

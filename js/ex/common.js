@@ -62,3 +62,10 @@ export function grandSeq(notes, key = 0, d = 4) {
     ],
   };
 }
+
+/** Colour one drawn note or event: "is-ok", "is-bad", "is-hint", or nothing. */
+export function setMark(el, cls) {
+  if (!el) return;
+  el.classList.remove("is-ok", "is-bad", "is-hint");
+  if (cls) el.classList.add(cls);
+}

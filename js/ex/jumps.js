@@ -2,7 +2,7 @@
 import { t } from "../i18n.js";
 import { midiOf, intervalOf, rnd, pickOne } from "../theory.js";
 import { pickByWeight, pitchLabel } from "../exercises.js";
-import { choicesOf, grandSeq, spellMidi, dirKey, dirWord } from "./common.js";
+import { choicesOf, grandSeq, spellMidi, dirKey, dirWord, setMark } from "./common.js";
 
 const LEVELS = [{ nums: [8] }, { nums: [6, 7] }, { nums: [15] }];
 
@@ -44,11 +44,20 @@ function question(level, p, prev) {
       if (d && d.got) return t("jump_miss", pitchLabel(spellMidi(d.got[1])), pitchLabel(c.B));
       return t("fbWas", pitchLabel(c.B));
     },
+    // The start and target notes turn green or red as they are played.
+    onNote: ([api], played) => {
+      const i = played.length - 1;
+      if (i > 1) return;
+      const want = i === 0 ? c.A : c.B,
+        e = api.events.find((x) => !x.hidden && x.notes[0] && x.notes[0].dn === want.dn);
+      if (e) setMark(e._el, played[i] === (i === 0 ? ma : mb) ? "is-ok" : "is-bad");
+    },
     mark: (apis, ok, d) =>
       apis[0].events.forEach((e) => {
         if (!e._el || e.hidden) return;
-        const second = e.notes[0] && e.notes[0].dn === c.B.dn;
-        e._el.classList.add(ok ? "is-ok" : second && d && d.got ? "is-bad" : "is-hint");
+        const first = e.notes[0] && e.notes[0].dn === c.A.dn;
+        const hit = d && d.got ? d.got[first ? 0 : 1] === (first ? ma : mb) : false;
+        setMark(e._el, ok || hit ? "is-ok" : d && d.got ? "is-bad" : "is-hint");
       }),
   };
 }
