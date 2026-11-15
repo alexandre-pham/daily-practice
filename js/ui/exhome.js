@@ -12,6 +12,7 @@ import { EXERCISES, exById, exPrefs, setExPref, exMastery, exRounds, pathOf, les
 import { LESSONS, lessonById } from "../lessons.js";
 import { score } from "./score.js";
 import { startExercise } from "./exrun.js";
+import { setRouteHooks, writeRoute } from "./route.js";
 
 /** What the tab shows: "" the path, "notes" the note drill, or an exercise id. */
 let sel = "";
@@ -26,7 +27,10 @@ export function openExercise(id) {
   window.scrollTo(0, 0);
 }
 
+setRouteHooks({ getSel: () => sel, setSel: (v) => (sel = v === "notes" || exById(v) ? v : "") });
+
 export function renderReadTab() {
+  writeRoute();
   const home = !sel,
     notes = sel === "notes";
   $("exHome").classList.toggle("hide", !home);

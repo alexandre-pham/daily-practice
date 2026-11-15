@@ -117,8 +117,26 @@ export async function connectBle() {
     return true;
   } catch (err) {
     changed();
-    return err && err.name === "NotFoundError" ? false : Promise.reject(err);
+    // Closing Chrome's window without choosing is not an error; anything else is reported.
+    if (err && err.name === "NotFoundError" && /cancel/i.test(err.message || "")) return false;
+    return Promise.reject(err);
   }
+}
+
+/**
+ * Why Bluetooth can't be used, as a text key: "bleOff" when the computer's Bluetooth is off or
+ * Chrome isn't allowed to use it, "bleBlocked" when the page may not use it, else "bleFailed".
+ */
+export async function bleProblem(err) {
+  const msg = (err && err.message) || "";
+  if (err && err.name === "SecurityError") return "bleBlocked";
+  try {
+    if (navigator.bluetooth.getAvailability && !(await navigator.bluetooth.getAvailability())) return "bleOff";
+  } catch {
+    /* unknown */
+  }
+  if (/adapter|not available|unavailable|powered/i.test(msg)) return "bleOff";
+  return "bleFailed";
 }
 
 export function disconnectBle() {

@@ -60,6 +60,7 @@ import "./i18n-ex.js";
 import "./ex/index.js";
 import { initExHome } from "./ui/exhome.js";
 import { initBle } from "./ui/ble.js";
+import { readRoute } from "./ui/route.js";
 import { initTempo, openTempo } from "./ui/tempo.js";
 import { initAccount } from "./ui/account.js";
 import { initCloudSync } from "./cloud-sync.js";
@@ -464,6 +465,7 @@ setInterval(() => {
 }, 1000);
 
 // ---------- start ----------
+readRoute(); // first: the tab and exercise page named in the address
 initDialogs();
 initReading();
 initExHome();
@@ -478,6 +480,13 @@ on("cloudsync", renderSync);
 on("account", renderSync);
 applyStatic();
 renderAll();
+// The browser's back and forward buttons move between tabs and exercise pages.
+window.addEventListener("popstate", () => {
+  if (readRoute()) {
+    renderAll();
+    window.scrollTo(0, 0);
+  }
+});
 // The gist sync is gone: drop what it left on this device (the encrypted GitHub token included).
 try {
   localStorage.removeItem("suivi-piano-gist");

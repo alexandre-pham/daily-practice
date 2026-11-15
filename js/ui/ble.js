@@ -8,7 +8,7 @@ import { $, el, readJSON, writeJSON } from "../util.js";
 import { on } from "../bus.js";
 import { t } from "../i18n.js";
 import { midiStatusKey, ensureMidi, MIDI_OK } from "../recorder.js";
-import { BLE_OK, bleConnected, connectBle, disconnectBle } from "../ble-midi.js";
+import { BLE_OK, bleConnected, connectBle, disconnectBle, bleProblem } from "../ble-midi.js";
 import { lockScroll } from "./dialogs.js";
 
 const LS_ASK = "suivi-ble-ask-v1";
@@ -41,18 +41,18 @@ export function renderPianoSettings() {
   const btns = el("div", "btns mt0");
   const b = el("button", "btn2", t(bleConnected() ? "bleDisconnect" : "bleConnect"));
   b.type = "button";
-  const err = el("p", "dlg-err hide");
+  // The reason of the last failed attempt; the section is redrawn whenever the connection changes.
+  const err = el("p", "dlg-err" + (problem ? "" : " hide"), problem);
   err.setAttribute("role", "alert");
   b.addEventListener("click", async () => {
     if (bleConnected()) return disconnectBle();
+    problem = "";
     b.disabled = true;
     try {
       await connectBle();
-    } catch {
-      err.textContent = t("bleFailed");
-      err.classList.remove("hide");
+    } catch (e) {
+      problem = await problemText(e);
     }
-    b.disabled = false;
     renderPianoSettings();
   });
   btns.appendChild(b);
@@ -68,6 +68,17 @@ export function renderPianoSettings() {
     chip(t("no"), !ask, () => (setAsk(false), renderPianoSettings())),
   );
   box.append(el("div", "rlab mt10", t("bleAskL")), row);
+}
+
+let problem = "";
+/** Why the connection failed, with Chrome's own message for the details. */
+async function problemText(e) {
+  const key = await bleProblem(e);
+  return t(key) + (key === "bleFailed" && e && e.message ? " (" + e.message + ")" : "");
+}
+async function showProblem(box, e) {
+  box.textContent = await problemText(e);
+  box.classList.remove("hide");
 }
 
 // ---------- the start-up window ----------
@@ -118,10 +129,9 @@ export function initBle() {
       const ok = await connectBle();
       $("bleAskGo").disabled = false;
       if (ok) closeAsk();
-    } catch {
+    } catch (e) {
       $("bleAskGo").disabled = false;
-      $("bleAskErr").textContent = t("bleFailed");
-      $("bleAskErr").classList.remove("hide");
+      showProblem($("bleAskErr"), e);
     }
   });
   document.addEventListener("keydown", (e) => {

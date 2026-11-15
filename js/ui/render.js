@@ -23,6 +23,7 @@ import { account } from "../cloud.js";
 import { cloudStatus } from "../cloud-sync.js";
 import { lockScroll } from "./dialogs.js";
 import { renderReadTab } from "./exhome.js";
+import { writeRoute } from "./route.js";
 import { renderRecs, recName, fileName, download } from "./recordings.js";
 import { clipBlob } from "../cloud-recs.js";
 
@@ -131,6 +132,7 @@ function renderView() {
   else if (state.view === "stats") renderStats();
   else if (state.view === "recs") renderRecs();
   else renderReadTab();
+  writeRoute();
 }
 
 // ---------- sessions view ----------
