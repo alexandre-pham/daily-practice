@@ -238,7 +238,6 @@ function drawQuestion(marks) {
     if (marks) marks();
   }
   u.stage.classList.toggle("hide", !q.sc);
-  r.fitLater = true;
   u.fb.className = "read-fb";
   u.fb.textContent = "\u00a0";
   // answer area

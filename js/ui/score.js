@@ -169,7 +169,7 @@ export function score(sc, o = {}) {
     // justify
     const natural = sys.w,
       last = si === systems.length - 1,
-      stretch = o.width && (o.justify !== false) && !(last && natural < width * 0.6 && systems.length > 1) ? (width - 2 - natural) : 0;
+      stretch = o.width && (o.justify !== false) && !(last && systems.length > 1 && sys.bars.length * 2 < Math.max(...systems.map((x) => x.bars.length))) ? (width - 2 - natural) : 0;
     const gaps = sys.bars.reduce((s, b) => s + b.cols.reduce((a, c) => a + c.gap, 0), 0) || 1;
     let x = x0 + sys.head;
     // staff lines

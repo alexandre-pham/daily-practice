@@ -9,7 +9,7 @@
 import { $, el } from "../util.js";
 import { on } from "../bus.js";
 import { t } from "../i18n.js";
-import { registerRunner, shell, fitWidth, fitScale, fitToStage, midiMode, midiHint, button, showResult, openPanel, closePanel } from "./exrun.js";
+import { registerRunner, shell, fitWidth, fitToStage, midiMode, midiHint, button, showResult, openPanel, closePanel } from "./exrun.js";
 import { score } from "./score.js";
 import { audio, click, note, hush, audioAt, heardNow, piano, hasPiano } from "../sound.js";
 import { recordSkill, addRound, latency, setLatency, setTempo, tolMs, calibrated, pitchLabel } from "../exercises.js";
@@ -105,16 +105,39 @@ function draw() {
   // Pieces are drawn a little smaller, so four bars fit on one line where the screen allows.
   const size = pc.pitched ? rows + 0.5 : rows;
   let w = fitWidth(u.staff, size, pc.pitched ? 1500 : 900);
-  // On a phone, two bars per line rather than one: smaller notes, but phrases stay readable.
-  if (pc.pitched && window.innerWidth < 700) w = Math.max(w, 600);
   P.api = score(pc.sc, Object.assign({ width: w, label: t("perf_aria") }, pc.scOpts || {}));
   wrap.appendChild(P.api.svg);
   P.wrap = wrap;
 }
 
-/** The score as large as the stage allows (see fitToStage). */
+/**
+ * The score as large as the stage allows. The line length decides how the bars break into
+ * lines, so a few lengths are tried and the one giving the largest notes is kept (one long line
+ * on a wide screen, two bars per line on a phone), then the drawing is scaled to the stage.
+ */
 function fitStage() {
   if (!P || !P.wrap) return;
+  const st = P.ui.stage,
+    W = st.clientWidth - 4,
+    H = st.clientHeight - 6,
+    pc = P.piece;
+  if (W > 50 && H > 50) {
+    const cap = window.innerWidth >= 1800 ? 2.6 : window.innerWidth >= 960 ? 2 : 1.5;
+    const opts = (w) => Object.assign({ width: w, label: t("perf_aria") }, pc.scOpts || {});
+    let bestW = 0,
+      best = -1;
+    for (const w of [300, 400, 500, 620, 760, 920, 1100, 1300, 1500]) {
+      const vb = score(pc.sc, opts(w)).svg.getAttribute("viewBox").split(" ").map(Number);
+      const s = Math.min(cap, W / vb[2], H / vb[3]);
+      if (s >= best - 0.01) {
+        best = Math.max(best, s);
+        bestW = w;
+      }
+    }
+    P.api = score(pc.sc, opts(bestW));
+    P.wrap.textContent = "";
+    P.wrap.appendChild(P.api.svg);
+  }
   fitToStage(P.ui.stage, [P.wrap]);
 }
 
@@ -138,7 +161,7 @@ function study() {
   // The questions, each with its answer hidden until "Show the answers" is pressed. On small
   // screens, a one-line reminder; the answers appear below it.
   const ans = studyAnswers(pc);
-  const wide = window.innerWidth >= 700 && window.innerHeight >= 700;
+  const wide = window.innerWidth >= 700 && window.innerHeight >= 900;
   const ul = el("ul", "studylist");
   const hidden = [];
   ["study_key", "study_time", "study_hands", "study_shapes", "study_repeat", "study_partner"].forEach((k, i) => {
