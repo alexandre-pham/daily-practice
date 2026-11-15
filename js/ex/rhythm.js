@@ -4,7 +4,7 @@
 // cell; the timing error (ms) is what decides whether a cell is solid.
 import { t } from "../i18n.js";
 import { pickOne } from "../theory.js";
-import { pickByWeight, tempoOf, setTempo, latency, calibrated, tolerance, setTolerance, TOLERANCES } from "../exercises.js";
+import { pickByWeight, tempoOf, latency, calibrated, tolerance, setTolerance, TOLERANCES } from "../exercises.js";
 import { el } from "../util.js";
 import { group, chip } from "../ui/exhome.js";
 import { startCalibration } from "../ui/perform.js";
@@ -248,16 +248,9 @@ export default {
   piece,
   itemLabel,
   tempoKey: (level) => "rhythm:" + level,
-  /** Tempo of the current level (it also adapts after each round) and the latency calibration. */
+  /** The latency calibration and the timing tolerance (the tempo is shown for every timed exercise). */
   extraSetup(p, rerender) {
     const box = el("div");
-    const key = "rhythm:" + p.level,
-      bpm = tempoOf(key, 60);
-    const set = (v) => () => {
-      setTempo(key, v);
-      rerender();
-    };
-    box.appendChild(group(t("tempoL"), [chip("−", false, set(bpm - 4), { "aria-label": t("slower") }), el("span", "tempo-val", "♩ = " + bpm), chip("+", false, set(bpm + 4), { "aria-label": t("faster") })], t("tempoH")));
     const cal = el("button", "btn2", t("calBtn"));
     cal.type = "button";
     cal.addEventListener("click", () => startCalibration(rerender));

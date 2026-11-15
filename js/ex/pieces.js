@@ -3,8 +3,8 @@
 // in between, broken-chord accompaniments, phrases that repeat). Played with the timed engine
 // (js/ui/perform.js): the music never waits. Used by "Morceaux", "Ensemble" and the benchmark.
 import { t } from "../i18n.js";
-import { inKey, tonic, chordOnDegree, degreeRoot, midiOf, letterOf, intervalOf, pickOne } from "../theory.js";
-import { tempoOf, noteLabel } from "../exercises.js";
+import { inKey, tonic, chordOnDegree, degreeRoot, midiOf, letterOf, intervalOf, pickOne, signature, chordSymbol, qualityOf, ROMAN } from "../theory.js";
+import { tempoOf, noteLabel, pitchLabel, NAMES } from "../exercises.js";
 import { PROGS } from "./cadences.js";
 
 /** Difficulty steps, from five-finger melodies to Alberti basses and two-part writing. */
@@ -68,13 +68,11 @@ function barChords(bars) {
   const code = pickOne(Object.keys(PROGS));
   let p = PROGS[code].slice();
   while (p.length < 4) p.push(1);
-  const out = [];
-  while (out.length < bars) out.push(...p);
-  out.length = bars;
-  if (bars >= 4) {
-    out[bars - 2] = 5;
-    out[bars - 1] = 1;
-  }
+  // The loop's first two chords, then a V – I cadence so the piece sounds finished
+  // (vi – IV – V – I, I – IV – V – I…); eight bars play the whole loop first.
+  const end = [p[0], p[1] === 5 ? 4 : p[1], 5, 1];
+  const out = bars >= 8 ? p.slice(0, 4).concat(end) : end.slice(0, bars);
+  while (out.length < bars) out.push(1);
   return { code, degs: out };
 }
 
@@ -212,10 +210,30 @@ export function makePiece(cfg) {
     const iv = intervalOf(rh[i - 1].note, rh[i].note);
     if (iv.number > 1 && iv.number <= 8) rh[i].iv = "int:t:" + iv.number + iv.quality + ":" + (iv.dir > 0 ? "up" : "dn");
   }
+  // Answers to the study questions, from the way the piece was built.
+  const N = NAMES();
+  const firstOf = (hand) => {
+    const a = expected.filter((x) => x.hand === hand).sort((x, y) => x.t - y.t || x.midi - y.midi)[0];
+    return a ? pitchLabel(a.note) : "";
+  };
+  const answers = {
+    key: { name: t("keyMajor", noteLabel(T)), sig: signature(f).map((x) => noteLabel(x)), sharp: f > 0 },
+    beats,
+    rh: firstOf("r"),
+    lh: firstOf("l"),
+    chords: degs.map((d) => {
+      const c = chordOnDegree(f, d, degreeRoot(f, d, 28));
+      return chordSymbol(N, c[0], qualityOf(c));
+    }),
+    romans: degs.map((d) => ROMAN[d - 1]),
+    lhKind: lhEvents.length ? lhKind : "",
+    bars,
+  };
   return {
     sc,
     scOpts: { staffGap: 6 * 14 },
     hands,
+    answers,
     time,
     beats,
     bars,

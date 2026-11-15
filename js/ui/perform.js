@@ -12,7 +12,7 @@ import { t } from "../i18n.js";
 import { registerRunner, shell, fitWidth, fitScale, midiMode, midiHint, button, showResult, openPanel, closePanel } from "./exrun.js";
 import { score } from "./score.js";
 import { audio, click, note, hush, audioAt, heardNow, piano, hasPiano } from "../sound.js";
-import { recordSkill, addRound, latency, setLatency, setTempo, tolMs, calibrated } from "../exercises.js";
+import { recordSkill, addRound, latency, setLatency, setTempo, tolMs, calibrated, pitchLabel } from "../exercises.js";
 import { read } from "../reading.js";
 import { MIDI_OK, ensureMidi } from "../recorder.js";
 
@@ -87,6 +87,7 @@ function nextPiece(again) {
   if (pc.pitched) study();
   else pads();
   u.actions.textContent = "";
+  if (P.ex.tempoKey) u.actions.appendChild(tempoControl());
   const go = button(P.demo ? t("perf_demo") : t("perf_go"), "btn perf-go", ready);
   u.actions.appendChild(go);
   go.focus();
@@ -139,12 +140,36 @@ function study() {
     pc = P.piece;
   u.area.textContent = "";
   const box = el("div", "study");
-  // The full checklist where there is room; a one-line reminder on small screens.
-  if (window.innerWidth >= 700 && window.innerHeight >= 700) {
-    const ul = el("ul", "studylist");
-    for (const k of ["study_key", "study_time", "study_hands", "study_shapes", "study_repeat"]) ul.appendChild(el("li", "", t(k)));
-    box.appendChild(ul);
-  } else box.appendChild(el("p", "study-short", t("study_short")));
+  // The questions, each with its answer hidden until "Show the answers" is pressed. On small
+  // screens, a one-line reminder; the answers appear below it.
+  const ans = studyAnswers(pc);
+  const wide = window.innerWidth >= 700 && window.innerHeight >= 700;
+  const ul = el("ul", "studylist");
+  const hidden = [];
+  ["study_key", "study_time", "study_hands", "study_shapes", "study_repeat"].forEach((k, i) => {
+    if (!ans[i]) return;
+    const li = el("li");
+    if (wide) li.appendChild(el("span", "", t(k)));
+    const a = el("span", "study-ans hide", ans[i]);
+    hidden.push(a);
+    li.appendChild(a);
+    ul.appendChild(li);
+  });
+  if (!wide) {
+    box.appendChild(el("p", "study-short", t("study_short")));
+    ul.classList.add("hide");
+  }
+  box.appendChild(ul);
+  const show = button(t("study_show"), "linkbtn study-toggle", () => {
+    const open = show.getAttribute("aria-expanded") !== "true";
+    show.setAttribute("aria-expanded", String(open));
+    show.textContent = t(open ? "study_hide" : "study_show");
+    hidden.forEach((a) => a.classList.toggle("hide", !open));
+    if (!wide) ul.classList.toggle("hide", !open);
+    fitStage();
+  });
+  show.setAttribute("aria-expanded", "false");
+  box.appendChild(show);
   const left = el("p", "muted small study-left");
   box.appendChild(left);
   u.area.appendChild(box);
@@ -157,6 +182,45 @@ function study() {
   tick();
   P.studyTimer = setInterval(tick, 1000);
   if (pc.partnerNotes.length || P.demo) piano(); // load the samples while the player studies
+}
+
+/** Answers to the five study questions for a generated piece. */
+function studyAnswers(pc) {
+  const a = pc.answers;
+  if (!a) return [];
+  // chords per bar, with the progression in degrees
+  const out = [
+    t("ans_key", a.key.name, a.key.sig, a.key.sharp),
+    t("ans_time", a.beats),
+    a.rh || a.lh ? t("ans_hands", a.rh, a.lh) : "",
+    t("ans_chords", a.chords.join(" | "), a.romans.join(" – ")) + (a.lhKind ? " " + t("ans_lh_" + a.lhKind) : ""),
+    t(a.bars >= 8 ? "ans_repeat8" : "ans_repeat4"),
+  ];
+  return out;
+}
+
+/** Slower / faster before playing; the tempo is kept for the level. */
+function tempoControl() {
+  const box = el("div", "tempoctl"),
+    val = el("span", "tempo-val");
+  const show = () => {
+    val.textContent = "♩ = " + P.piece.tempo;
+    const pc = P.piece;
+    P.ui.prompt.textContent = pc.pitched ? pc.keyName + " · " + pc.time.join("/") + " · ♩ = " + pc.tempo : t("perf_ready", pc.tempo);
+  };
+  const step = (dv) => () => {
+    const v = Math.max(30, Math.min(200, P.piece.tempo + dv));
+    P.piece.tempo = v;
+    setTempo(P.ex.tempoKey(P.level), v);
+    show();
+  };
+  const minus = button("−", "iconbtn round", step(-4)),
+    plus = button("+", "iconbtn round", step(4));
+  minus.setAttribute("aria-label", t("slower"));
+  plus.setAttribute("aria-label", t("faster"));
+  box.append(minus, val, plus);
+  show();
+  return box;
 }
 
 /** Big tap areas for playing without a piano (and for touch screens). */
@@ -219,6 +283,17 @@ async function ready() {
   loop();
 }
 
+/**
+ * How early or late (ms) a note may come and still count. Reading real notes takes longer than
+ * tapping, so in pieces a right note counts up to a quarter of a beat early and half a beat late
+ * (shown as early or late); in rhythm exercises the tolerance setting decides.
+ */
+function windows() {
+  if (!P.piece.pitched) return [WINDOW_MS, WINDOW_MS];
+  const beatMs = P.beat * 1000;
+  return [Math.max(WINDOW_MS, Math.min(300, beatMs * 0.25)), Math.max(WINDOW_MS, Math.min(600, beatMs * 0.5))];
+}
+
 /** Position in the piece, in quarter notes, of an audio time. */
 const qAt = (a) => (a - P.Tp) / P.beat;
 
@@ -246,7 +321,7 @@ function loop() {
     // attacks whose time has passed without a tap are missed
     if (!P.demo)
       for (const a of pc.expected)
-        if (a.dev === undefined && !a.missed && (q - a.t) * P.beat * 1000 > WINDOW_MS) {
+        if (a.dev === undefined && !a.missed && (q - a.t) * P.beat * 1000 > windows()[1]) {
           a.missed = true;
           mark(a.note && a.note._el ? { _el: a.note._el } : a.ev, "is-bad");
         }
@@ -271,16 +346,20 @@ function tap(zone, perfMs, midi) {
   if (P.piece.pitched && midi === undefined) return;
   const q = qAt(audioAt(perfMs) - latency() / 1000);
   if (q < -0.5) return; // tapping along with the count-in
-  let best = null,
-    bestD = Infinity;
+  // Candidates: unplayed notes of the right pitch (and hand) within the window. A note in time
+  // wins; otherwise the earliest one, since a late note belongs to the beat that has passed.
+  const [early, late] = windows();
+  let best = null;
   for (const a of P.piece.expected) {
     if (a.dev !== undefined || a.missed) continue;
     if (a.zone !== "any" && zone !== "any" && a.zone !== zone) continue;
     if (a.midi !== undefined && a.midi !== midi) continue;
     const d = (q - a.t) * P.beat * 1000;
-    if (Math.abs(d) <= WINDOW_MS && Math.abs(d) < bestD) {
+    if (d < -early || d > late) continue;
+    const inTime = Math.abs(d) <= GOOD_MS,
+      bestIn = best && Math.abs(best._d) <= GOOD_MS;
+    if (!best || (inTime && (!bestIn || Math.abs(d) < Math.abs(best._d))) || (!inTime && !bestIn && a.t < best.t)) {
       best = a;
-      bestD = Math.abs(d);
       best._d = d;
     }
   }
@@ -288,6 +367,32 @@ function tap(zone, perfMs, midi) {
     best.dev = best._d;
     mark(best.note && best.note._el ? { _el: best.note._el } : best.ev, Math.abs(best.dev) <= GOOD_MS ? "is-ok" : "is-hint");
   } else P.extras++;
+  if (P.piece.pitched) heard(midi, best);
+}
+
+/** What the app heard, live under the score: the note, and how early or late it was. */
+function heard(midi, a) {
+  const u = P.ui,
+    name = pitchLabel(spell(midi, P.piece.sc.key || 0));
+  if (a) {
+    const ms = Math.round(a.dev);
+    u.fb.className = "read-fb heard " + (Math.abs(ms) <= GOOD_MS ? "ok" : "late");
+    u.fb.textContent = name + " · " + (Math.abs(ms) <= GOOD_MS ? t("heard_inTime") : (ms > 0 ? "+" : "−") + Math.abs(ms) + " ms");
+  } else {
+    u.fb.className = "read-fb heard bad";
+    u.fb.textContent = name + " · " + t("heard_notExpected");
+  }
+}
+
+/** A MIDI pitch spelled for a key: sharps in sharp keys, flats in flat keys. */
+function spell(m, key) {
+  const pc = ((m % 12) + 12) % 12,
+    oct = Math.floor(m / 12) - 1,
+    W = [0, 2, 4, 5, 7, 9, 11];
+  const w = W.indexOf(pc);
+  if (w >= 0) return { dn: oct * 7 + w, acc: 0 };
+  if (key < 0) return { dn: oct * 7 + W.indexOf(pc + 1), acc: -1 };
+  return { dn: oct * 7 + W.indexOf(pc - 1), acc: 1 };
 }
 
 function finishPiece() {

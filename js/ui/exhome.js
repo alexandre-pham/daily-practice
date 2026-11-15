@@ -8,7 +8,7 @@ import { MIDI_OK, ensureMidi, midiStatusKey } from "../recorder.js";
 import { read, setPref } from "../reading.js";
 import { renderRead } from "./reading.js";
 import { lockScroll } from "./dialogs.js";
-import { EXERCISES, exById, exPrefs, setExPref, exMastery, exRounds, pathOf, lessonRead, markLesson, namesMode } from "../exercises.js";
+import { EXERCISES, exById, exPrefs, setExPref, exMastery, exRounds, pathOf, lessonRead, markLesson, namesMode, tempoOf, setTempo } from "../exercises.js";
 import { LESSONS, lessonById } from "../lessons.js";
 import { score } from "./score.js";
 import { startExercise } from "./exrun.js";
@@ -198,6 +198,21 @@ function renderPane(ex) {
         read.prefs.midi ? midiLine() : t(ex.buttonsHint || "answerButtonsH"),
       ),
     );
+  if (ex.tempoKey) {
+    const key = ex.tempoKey(p.level),
+      bpm = tempoOf(key, 60);
+    const setT = (v) => () => {
+      setTempo(key, v);
+      renderPane(ex);
+    };
+    card.appendChild(
+      group(
+        t("tempoL"),
+        [chip("−", false, setT(bpm - 4), { "aria-label": t("slower") }), el("span", "tempo-val", "♩ = " + bpm), chip("+", false, setT(bpm + 4), { "aria-label": t("faster") })],
+        t("tempoH"),
+      ),
+    );
+  }
   if (ex.extraSetup) {
     const x = ex.extraSetup(p, () => renderPane(ex));
     if (x) card.appendChild(x);
