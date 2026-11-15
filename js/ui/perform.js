@@ -9,7 +9,7 @@
 import { $, el } from "../util.js";
 import { on } from "../bus.js";
 import { t } from "../i18n.js";
-import { registerRunner, shell, fitWidth, fitScale, midiMode, midiHint, button, showResult, openPanel, closePanel } from "./exrun.js";
+import { registerRunner, shell, fitWidth, fitScale, fitToStage, midiMode, midiHint, button, showResult, openPanel, closePanel } from "./exrun.js";
 import { score } from "./score.js";
 import { audio, click, note, hush, audioAt, heardNow, piano, hasPiano } from "../sound.js";
 import { recordSkill, addRound, latency, setLatency, setTempo, tolMs, calibrated, pitchLabel } from "../exercises.js";
@@ -108,23 +108,18 @@ function draw() {
   // On a phone, two bars per line rather than one: smaller notes, but phrases stay readable.
   if (pc.pitched && window.innerWidth < 700) w = Math.max(w, 600);
   P.api = score(pc.sc, Object.assign({ width: w, label: t("perf_aria") }, pc.scOpts || {}));
-  wrap.style.maxWidth = Math.round(w * fitScale(size)) + "px";
   wrap.appendChild(P.api.svg);
   P.wrap = wrap;
 }
 
-/** Several lines of music on a small screen: shrink the score until it fits the stage. */
+/** The score as large as the stage allows (see fitToStage). */
 function fitStage() {
   if (!P || !P.wrap) return;
-  const u = P.ui,
-    wrap = P.wrap,
-    room = u.stage.clientHeight - 8,
-    h = wrap.getBoundingClientRect().height;
-  if (room > 80 && h > room) wrap.style.maxWidth = Math.floor(wrap.getBoundingClientRect().width * (room / h)) + "px";
+  fitToStage(P.ui.stage, [P.wrap]);
 }
 
 function inputHint() {
-  if (P.piece.pitched) return P.demo ? t("perf_demoH") : midiHint() + (calibrated() ? "" : " " + t("perf_notCal"));
+  if (P.piece.pitched) return (P.demo ? t("perf_demoH") : midiHint() + (calibrated() ? "" : " " + t("perf_notCal"))) + " " + t("perf_tempoKeys");
   const two = P.piece.twoHands;
   const cal = calibrated() ? "" : " " + t("perf_notCal");
   if (midiMode()) return midiHint() + " " + t(two ? "perf_midi2" : "perf_midi1") + cal;
@@ -146,7 +141,7 @@ function study() {
   const wide = window.innerWidth >= 700 && window.innerHeight >= 700;
   const ul = el("ul", "studylist");
   const hidden = [];
-  ["study_key", "study_time", "study_hands", "study_shapes", "study_repeat"].forEach((k, i) => {
+  ["study_key", "study_time", "study_hands", "study_shapes", "study_repeat", "study_partner"].forEach((k, i) => {
     if (!ans[i]) return;
     const li = el("li");
     if (wide) li.appendChild(el("span", "", t(k)));
@@ -195,6 +190,7 @@ function studyAnswers(pc) {
     a.rh || a.lh ? t("ans_hands", a.rh, a.lh) : "",
     t("ans_chords", a.chords.join(" | "), a.romans.join(" – ")) + (a.lhKind ? " " + t("ans_lh_" + a.lhKind) : ""),
     t(a.bars >= 8 ? "ans_repeat8" : "ans_repeat4"),
+    a.partner ? t("ans_partner_" + a.partner) + (a.style ? " " + t("ans_style", t("style_" + a.style)) : "") : "",
   ];
   return out;
 }
@@ -203,19 +199,24 @@ function studyAnswers(pc) {
 function tempoControl() {
   const box = el("div", "tempoctl"),
     val = el("span", "tempo-val");
+  const running = () => P.phase === "count" || P.phase === "play";
   const show = () => {
     val.textContent = "♩ = " + P.piece.tempo;
     const pc = P.piece;
-    P.ui.prompt.textContent = pc.pitched ? pc.keyName + " · " + pc.time.join("/") + " · ♩ = " + pc.tempo : t("perf_ready", pc.tempo);
+    if (!running() && P.phase !== "done") P.ui.prompt.textContent = pc.pitched ? pc.keyName + " · " + pc.time.join("/") + " · ♩ = " + pc.tempo : t("perf_ready", pc.tempo);
   };
   const step = (dv) => () => {
     const v = Math.max(30, Math.min(200, P.piece.tempo + dv));
     P.piece.tempo = v;
     setTempo(P.ex.tempoKey(P.level), v);
+    if (running()) liveTempo(v);
     show();
   };
+  box.dataset.tempo = "1";
   const minus = button("−", "iconbtn round", step(-4)),
     plus = button("+", "iconbtn round", step(4));
+  for (const b of [minus, plus]) b.addEventListener("mousedown", (e) => running() && e.preventDefault());
+  P.tempoStep = step;
   minus.setAttribute("aria-label", t("slower"));
   plus.setAttribute("aria-label", t("faster"));
   box.append(minus, val, plus);
@@ -269,18 +270,49 @@ async function ready() {
     countIn = pc.beats,
     totalBeats = pc.beats * pc.bars;
   P.beat = beat;
+  P.countIn = countIn;
   P.T0 = ctx.currentTime + LEAD_S;
   P.Tp = P.T0 + countIn * beat;
   P.end = totalBeats;
-  const clicksAll = pc.clicks !== false;
-  for (let i = 0; i < countIn + totalBeats; i++) if (i < countIn || clicksAll) click(P.T0 + i * beat, i % pc.beats === 0, i < countIn ? 1 : pc.pitched ? 0.35 : 0.7);
-  // the partner part (and, without a piano, the whole piece as a demonstration)
-  const sound = (pc.partnerNotes || []).concat(P.demo ? pc.expected.map((a) => ({ t: a.t, d: a.ev.d, p: a.midi })) : []);
-  for (const n of sound) note(n.p, P.Tp + n.t * beat, n.d * beat * 0.95, P.demo ? 78 : 64);
+  schedule(0);
   P.phase = "count";
   P.ui.actions.textContent = "";
+  // the tempo can still be changed while playing
+  if (P.ex.tempoKey) P.ui.actions.appendChild(tempoControl());
   P.ui.prompt.textContent = "";
   loop();
+}
+
+/** Schedule the clicks and the partner's notes that fall after an audio time. */
+function schedule(after) {
+  const pc = P.piece,
+    beat = P.beat,
+    clicksAll = pc.clicks !== false;
+  for (let i = 0; i < P.countIn + P.end; i++) {
+    const at = P.T0 + i * beat;
+    if (at > after && (i < P.countIn || clicksAll)) click(at, i % pc.beats === 0, i < P.countIn ? 1 : pc.pitched ? 0.35 : 0.7);
+  }
+  // the partner part (and, without a piano, the whole piece as a demonstration)
+  const sound = (pc.partnerNotes || []).concat(P.demo ? pc.expected.map((a) => ({ t: a.t, d: a.ev.d, p: a.midi })) : []);
+  for (const n of sound) {
+    const at = P.Tp + n.t * beat;
+    if (at > after) note(n.p, at, n.d * beat * 0.95, P.demo ? 78 : 64);
+  }
+}
+
+/**
+ * Change the tempo while the music runs: the cursor stays where it is, what follows is played
+ * at the new speed (the clicks and partner notes already scheduled are replaced).
+ */
+function liveTempo(bpm) {
+  const now = heardNow(),
+    q = qAt(now),
+    beat = 60 / bpm;
+  hush();
+  P.beat = beat;
+  P.Tp = now - q * beat;
+  P.T0 = P.Tp - P.countIn * beat;
+  schedule(now + 0.03);
 }
 
 /**
@@ -441,6 +473,7 @@ function finishPiece() {
   const done = P.total !== Infinity ? P.i >= P.total : performance.now() - P.started >= P.opts.budget;
   const next = button(done ? t("perf_finish") : t("perf_next"), "btn perf-go", () => (done ? finishRound(false) : nextPiece()));
   u.actions.append(button(t("perf_again"), "btn2", () => nextPiece(true)), next);
+  if (P.ex.tempoKey) u.actions.prepend(tempoControl());
   next.focus();
   fitStage();
 }
@@ -499,6 +532,7 @@ function afterPiece(counted) {
   const done = counted && (P.total !== Infinity ? P.i >= P.total : performance.now() - P.started >= P.opts.budget);
   const next = button(done ? t("perf_finish") : t("perf_next"), "btn perf-go", () => (done ? finishRound(false) : nextPiece()));
   u.actions.append(button(t("perf_again"), "btn2", () => nextPiece(true)), next);
+  if (P.ex.tempoKey) u.actions.prepend(tempoControl());
   next.focus();
   fitStage();
 }
@@ -549,6 +583,8 @@ document.addEventListener("keydown", (e) => {
   if (playing) {
     if (k === "escape") return;
     e.preventDefault();
+    // ↑ / ↓ change the tempo while playing
+    if ((k === "arrowup" || k === "arrowdown") && P && P.tempoStep) return P.tempoStep(k === "arrowup" ? 4 : -4)();
     const two = P && P.piece.twoHands;
     if (two && k === "f") tap("lo", e.timeStamp);
     else if (two && k === "j") tap("hi", e.timeStamp);

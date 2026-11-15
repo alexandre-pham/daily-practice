@@ -101,6 +101,29 @@ export function fitWidth(box, staves = 1, max = 0) {
   return Math.max(240, w);
 }
 
+/**
+ * Size the drawn scores to the room the screen gives them: as large as the stage allows (width
+ * and height), up to a comfortable maximum, so they never look lost on a big screen nor get cut
+ * off on a small one. `wraps` are the elements holding one score SVG each, stacked.
+ */
+export function fitToStage(stage, wraps) {
+  wraps = wraps.filter((w) => w && w.querySelector("svg"));
+  if (!wraps.length || !stage.clientHeight) return;
+  const cap = window.innerWidth >= 1800 ? 2.6 : window.innerWidth >= 960 ? 2 : 1.5;
+  const W = stage.clientWidth - 4,
+    gap = 10,
+    H = stage.clientHeight - 6 - gap * (wraps.length - 1);
+  const dims = wraps.map((w) => {
+    const vb = w.querySelector("svg").viewBox.baseVal;
+    return [vb.width || 1, vb.height || 1];
+  });
+  const scale = Math.max(0.3, Math.min(cap, W / Math.max(...dims.map((d) => d[0])), H / dims.reduce((a, d) => a + d[1], 0)));
+  wraps.forEach((w, i) => {
+    w.style.maxWidth = "100%";
+    w.style.width = Math.floor(dims[i][0] * scale) + "px";
+  });
+}
+
 export function midiHint() {
   if (!midiMode()) return "";
   const s = midiStatusKey();
@@ -208,8 +231,6 @@ function drawQuestion(marks) {
       const rows = sc.staves.length * scs.length;
       const w = fitWidth(u.staff, rows, q.maxW || 0);
       const api = score(sc, Object.assign({ width: w, even: !sc.time, gap: 56, label: q.label || "" }, q.scOpts || {}));
-      // A short question keeps the same note size as a long one, centred, instead of being enlarged.
-      if (q.maxW || scs.length > 1) wrap.style.maxWidth = Math.round(w * fitScale(rows)) + "px";
       wrap.appendChild(api.svg);
       if (k === 0) r.api = api;
       (r.apis = r.apis || [])[k] = api;
@@ -217,6 +238,7 @@ function drawQuestion(marks) {
     if (marks) marks();
   }
   u.stage.classList.toggle("hide", !q.sc);
+  r.fitLater = true;
   u.fb.className = "read-fb";
   u.fb.textContent = "\u00a0";
   // answer area
@@ -241,6 +263,7 @@ function drawQuestion(marks) {
     u.area.appendChild(row);
   }
   u.actions.appendChild(button(t("skip"), "read-skip", () => !r.answered && answer(false, { skipped: true })));
+  fitToStage(u.stage, [...u.staff.querySelectorAll(".ex-score")]);
   u.hint.textContent = useChoices ? (q.choicesHint ? t(q.choicesHint) : "") : midiHint() + (q.hint ? (midiHint() ? " " : "") + q.hint : "");
 }
 

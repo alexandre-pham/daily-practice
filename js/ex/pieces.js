@@ -228,6 +228,9 @@ export function makePiece(cfg) {
     romans: degs.map((d) => ROMAN[d - 1]),
     lhKind: lhEvents.length ? lhKind : "",
     bars,
+    // in Ensemble: what the app plays, and in which style
+    partner: partner !== "none" ? partner : hands !== "both" && lhEvents.length ? (hands === "rh" ? "lhPart" : "rhPart") : "",
+    style: style !== "plain" ? style : "",
   };
   return {
     sc,
@@ -316,7 +319,7 @@ const ENS = [
   { partner: "duet", step: 3 },
   { partner: "duet", step: 5 },
 ];
-let styleTurn = 0;
+let styleTurn = Math.floor(Math.random() * STYLES.length); // the first style changes from day to day
 const ensemble = {
   id: "ensemble",
   prefix: "pcs",
