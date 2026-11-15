@@ -565,6 +565,8 @@
               <button class="chip" type="button" data-lang="fr" lang="fr">Français</button>
               <button class="chip" type="button" data-lang="en" lang="en">English</button>
             </div>
+            <h3 data-i18n="pianoH">Piano</h3>
+            <div id="pianoSet"></div>
             <h3 data-i18n="activity">Activité</h3>
             <form id="actForm" novalidate>
               <div class="two">
@@ -617,6 +619,18 @@
             </div>
             <div class="hr"></div>
             <button class="btn-danger" id="actDel" data-i18n="delAct">Supprimer l'activité</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modalwrap hide" id="bleAsk">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="bleAskT" aria-describedby="bleAskP">
+          <h2 id="bleAskT" data-i18n="bleAskT">Connecter le piano ?</h2>
+          <p class="muted dlg-body" id="bleAskP" data-i18n="bleAskP">Le piano n'est pas connecté.</p>
+          <p class="dlg-err hide" id="bleAskErr" role="alert"></p>
+          <div class="acts">
+            <button class="btn2" id="bleAskLater" type="button" data-i18n="bleAskLater">Plus tard</button>
+            <button class="btn" id="bleAskGo" type="button" data-i18n="bleAskGo">Connecter</button>
           </div>
         </div>
       </div>
