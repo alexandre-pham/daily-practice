@@ -3,6 +3,7 @@ import { uid } from "./util.js";
 import { emit } from "./bus.js";
 import { state, saveRun } from "./store.js";
 import { putClip } from "./clips.js";
+import { BLE_OK, bleConnected, bleName, setBleHandlers, restoreBle } from "./ble-midi.js";
 
 export const MIDI_OK = !!navigator.requestMIDIAccess;
 const PPQ = 480,
@@ -28,6 +29,7 @@ export const recInfo = () => ({
 
 // ---------- MIDI ----------
 export function midiStatusKey() {
+  if (bleConnected()) return { key: "pianoIs", args: [bleName() + " (Bluetooth)"] };
   if (!MIDI_OK) return null;
   if (!midi.access) return midi.asked ? { key: "midiDenied", args: [] } : null;
   return midi.input ? { key: "pianoIs", args: [midi.input.name] } : { key: "noPiano", args: [] };
@@ -66,6 +68,8 @@ export async function ensureMidi() {
 function onMidi(e) {
   const d = e.data;
   if (!d || !d.length) return;
+  // When the piano is connected over Bluetooth from the page, that link is the one listened to.
+  if (bleConnected() && !e.ble) return;
   const st = d[0] & 0xf0;
   if (st === 0x90 && d[2] > 0) held.add(d[1]);
   else if (st === 0x80 || (st === 0x90 && d[2] === 0)) held.delete(d[1]);
@@ -146,8 +150,10 @@ export function buildSMF(evs) {
 
 export async function startMidi() {
   if (!state.run || state.run.pausedAt || mrec || !MIDI_OK) return;
-  if (!(await ensureMidi())) return;
-  if (!midi.input) return showMidiStatus();
+  if (!bleConnected()) {
+    if (!(await ensureMidi())) return;
+    if (!midi.input) return showMidiStatus();
+  }
   mrec = { startedAt: Date.now(), events: [], notes: 0 };
   showMidiStatus();
 }
@@ -195,4 +201,15 @@ export function refreshMessage() {
 }
 export function clearMessage() {
   say(null);
+}
+
+// ---------- Bluetooth MIDI from the page (js/ble-midi.js) ----------
+if (BLE_OK) {
+  setBleHandlers(
+    (msg) => onMidi({ data: msg, timeStamp: performance.now(), ble: true }),
+    () => {
+      if (!recording()) showMidiStatus();
+    },
+  );
+  restoreBle();
 }

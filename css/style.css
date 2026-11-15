@@ -2463,3 +2463,9 @@ details summary {
   color: var(--felt);
   font-weight: 600;
 }
+.blectl {
+  margin-top: 10px;
+}
+.blemsg {
+  margin: 6px 0 0;
+}

@@ -12,6 +12,7 @@ import { EXERCISES, exById, exPrefs, setExPref, exMastery, exRounds, pathOf, les
 import { LESSONS, lessonById } from "../lessons.js";
 import { score } from "./score.js";
 import { startExercise } from "./exrun.js";
+import { bleControl } from "./ble.js";
 
 /** What the tab shows: "" the path, "notes" the note drill, or an exercise id. */
 let sel = "";
@@ -198,6 +199,10 @@ function renderPane(ex) {
         read.prefs.midi ? midiLine() : t(ex.buttonsHint || "answerButtonsH"),
       ),
     );
+  if (read.prefs.midi) {
+    const bc = bleControl(() => renderPane(ex));
+    if (bc) card.appendChild(bc);
+  }
   if (ex.tempoKey) {
     const key = ex.tempoKey(p.level),
       bpm = tempoOf(key, 60);

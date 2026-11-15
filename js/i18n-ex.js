@@ -328,6 +328,10 @@ const FR = {
   ans_repeat4: "La mesure 3 reprend le rythme de la mesure 1 ; la fin est une cadence V – I.",
   ans_repeat8: "Les mesures 5 et 6 répètent les mesures 1 et 2 ; la mesure 3 reprend le rythme de la mesure 1 ; la fin est une cadence V – I.",
   heard_inTime: "en place",
+  bleConnect: "Connecter le piano en Bluetooth",
+  bleDisconnect: "Déconnecter le Bluetooth",
+  bleHint: "Sans câble : une fenêtre de Chrome s'ouvre, choisis ton piano. Ensuite, l'appli le reconnecte d'elle-même quand Chrome le permet.",
+  bleFailed: "Connexion impossible. Vérifie que le Bluetooth du piano est activé et qu'il n'est pas déjà connecté au Mac dans Configuration audio et MIDI (déconnecte-le là-bas).",
   perf_tempoKeys: "Pendant le morceau, change le tempo avec − et +, ou les flèches ↑ et ↓.",
   heard_notExpected: "pas attendue ici",
 
@@ -636,6 +640,10 @@ const EN = {
   ans_repeat4: "Bar 3 has the rhythm of bar 1; it ends with a V – I cadence.",
   ans_repeat8: "Bars 5 and 6 repeat bars 1 and 2; bar 3 has the rhythm of bar 1; it ends with a V – I cadence.",
   heard_inTime: "in time",
+  bleConnect: "Connect the piano via Bluetooth",
+  bleDisconnect: "Disconnect Bluetooth",
+  bleHint: "No cable: a Chrome window opens, choose your piano. After that, the app reconnects it by itself where Chrome allows it.",
+  bleFailed: "Couldn't connect. Check that the piano's Bluetooth is on and that it isn't already connected to the Mac in Audio MIDI Setup (disconnect it there).",
   perf_tempoKeys: "While playing, change the tempo with − and +, or the ↑ and ↓ arrows.",
   heard_notExpected: "not expected here",
 
