@@ -221,18 +221,6 @@ function sortObj(o) {
 }
 const sortRead = (r) => ({ notes: sortObj(r.notes), skills: sortObj(r.skills), rounds: sortObj(r.rounds) });
 export const canon = (d) => JSON.stringify({ acts: sortObj(d.acts), entries: sortObj(d.entries), read: sortRead(d.read) });
-export const payload = () =>
-  JSON.stringify(
-    {
-      app: "suivi-piano",
-      version: 4,
-      acts: sortObj(state.data.acts),
-      entries: sortObj(state.data.entries),
-      read: sortRead(state.data.read),
-    },
-    null,
-    1,
-  );
 
 // ---------- persistence ----------
 export function load() {

@@ -12,10 +12,6 @@ import {
   liveActs,
   sessions,
   newActId,
-  normalize,
-  merge,
-  setData,
-  payload,
   ensureActivity,
   updateSession,
 } from "./store.js";
@@ -386,43 +382,6 @@ $("langPick").addEventListener("click", (e) => {
 on("lang", () => {
   refreshMessage();
   renderAll();
-});
-
-// ---------- backup ----------
-$("exp").addEventListener("click", () => {
-  const blob = new Blob([payload()], { type: "application/json" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "suivi-" + todayKey() + ".json";
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-});
-$("imp").addEventListener("click", () => $("impFile").click());
-$("impFile").addEventListener("change", (e) => {
-  const file = e.target.files[0];
-  e.target.value = "";
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    try {
-      const inc = normalize(JSON.parse(reader.result)),
-        now = Date.now();
-      const n = Object.keys(inc.entries).filter((k) => !inc.entries[k].deleted).length;
-      if (!n && !Object.keys(inc.acts).length) throw new Error("empty");
-      // Imported records get a fresh timestamp so they win over tombstones on every device.
-      for (const k in inc.entries) inc.entries[k] = Object.assign({}, inc.entries[k], { t: now });
-      for (const k in inc.acts) inc.acts[k] = Object.assign({}, inc.acts[k], { t: now });
-      setData(merge(state.data, inc));
-      changed();
-      renderAll();
-      toast(t("imported", n));
-    } catch {
-      toast(t("badFile"));
-    }
-  };
-  reader.readAsText(file);
 });
 
 on("data", () => {
